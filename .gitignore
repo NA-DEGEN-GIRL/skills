@@ -1,0 +1,21 @@
+node_modules/
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tmp
+*.local
+
+.DS_Store
+Thumbs.db
+
+# Runtime artifacts are written outside the repo by default, but keep this
+# ignored in case LLM_ROUTER_MCP_STATE_DIR is pointed at the project.
+.local/
+state/
+inputs/
+requests/
+responses/
+workdirs/
