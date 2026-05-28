@@ -7,7 +7,7 @@ This folder is a local workspace for portable handoff skill packages:
 - `codex-handoff` — Codex-specific package.
 - `claude-handoff` — Claude Code-specific package.
 
-The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.1`.
+The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.1`. Primary intended use is same-agent context hygiene: save before `/clear`, resume in a fresh session of the same LLM, and optionally transfer across agents.
 
 ## Read Order
 

@@ -46,8 +46,10 @@ Each package is self-contained. Agent-specific instructions live in `SKILL.md`; 
 
 ## Package Purpose
 
-- `codex-handoff`: Codex skill package for saving/resuming `.handoff/` snapshots.
-- `claude-handoff`: Claude Code counterpart using the same `.handoff/` file format.
+Primary workflow: **same-agent context hygiene**. Save before `/clear` or a fresh session, then resume in the same agent from `.handoff/latest.md` without carrying polluted chat context. Cross-agent handoff is optional.
+
+- `codex-handoff`: Codex skill package for saving/resuming `.handoff/` snapshots, mainly Codex → fresh Codex session.
+- `claude-handoff`: Claude Code counterpart, mainly Claude → fresh Claude Code session.
 
 Snapshot files live in the target project, never in this skill folder:
 

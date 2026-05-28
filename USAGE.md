@@ -6,8 +6,10 @@ Prerequisite: install the matching skill from this repo, then restart/open a fre
 
 ## Mental Model
 
-- **Save Mode**: before `/clear`, context reset, or agent switch. Produces `.handoff/latest.md` and a dated backup.
-- **Resume Mode**: after `/clear` or in another agent. Validates and reads `.handoff/latest.md`, then verifies actual repo state before continuing.
+Most common use: **same LLM, clean context**. Save before `/clear`, then resume in a fresh session of the same agent. This prevents long-chat/context pollution while preserving the useful working state. Cross-agent transfer is optional.
+
+- **Save Mode**: before `/clear`, context reset, periodic context cleanup, or agent switch. Produces `.handoff/latest.md` and a dated backup.
+- **Resume Mode**: after `/clear`, in a fresh same-agent session, or in another compatible agent. Validates and reads `.handoff/latest.md`, then verifies actual repo state before continuing.
 
 Generated files live in the target project:
 
@@ -15,6 +17,39 @@ Generated files live in the target project:
 .handoff/latest.md
 .handoff/YYYY-MM-DD-HHMMSS-codex.md
 .handoff/YYYY-MM-DD-HHMMSS-claude.md
+```
+
+## Periodic Same-Agent Cleanup
+
+Use this every time the chat gets long, noisy, or likely to confuse the model.
+
+### Codex → fresh Codex
+
+```text
+use codex-handoff
+컨텍스트 오염 방지를 위해 현재 작업 상태를 handoff로 저장해줘.
+그 다음 새 Codex 세션에서 이어받을 수 있게 next actions 중심으로 정리해.
+```
+
+Then open a fresh Codex session and say:
+
+```text
+use codex-handoff
+.handoff/latest.md 검증하고 이어받아. 이전 채팅 맥락은 무시하고 repo 상태를 우선해.
+```
+
+### Claude → fresh Claude
+
+```text
+use claude-handoff
+컨텍스트 정리를 위해 handoff 저장해줘. /clear 후 같은 Claude Code에서 이어받을 수 있게 정리해.
+```
+
+Then after `/clear` or in a fresh Claude Code session:
+
+```text
+use claude-handoff
+.handoff/latest.md 검증하고 이어받아. 스냅샷은 참고만 하고 실제 repo 상태를 우선해.
 ```
 
 ## Codex: Save Before `/clear`

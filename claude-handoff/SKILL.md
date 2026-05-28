@@ -9,6 +9,10 @@ description: Claude Code-specific workflow for saving and resuming compact repo-
 
 Use this Claude Code-specific skill to standardize a low-noise `save -> /clear -> resume` workflow. The work snapshot lives in the target repo at `.handoff/latest.md` plus dated backups. This skill folder can be copied or linked into `~/.claude/skills/`, but it does not require patching any installed default `handoff` skill.
 
+## Primary Use
+
+Primary use: same-agent context hygiene. Use this skill periodically before `/clear` or a fresh session in the same agent so the next session can resume from `.handoff/latest.md` without carrying polluted chat context. Cross-agent transfer is supported only as an optional secondary workflow when the other agent has a compatible handoff skill installed.
+
 ## Guarantees And Limits
 
 - Treat actual files and git state as the source of truth.
@@ -26,9 +30,9 @@ Separate precedence rules:
 
 ## Mode Selection
 
-Use **Save Mode** when the user asks to save current work, prepare for `/clear`, create a snapshot, or prepare another session/agent to continue later. Save examples: `handoff 만들어줘`, `clear 전에 정리해줘`, `snapshot 저장해줘`, `다음 세션에서 이어받게 정리해줘`.
+Use **Save Mode** when the user asks to save current work, prepare for `/clear`, prevent context pollution, create a snapshot, or prepare the next same-agent session or another compatible agent to continue later. Save examples: `handoff 만들어줘`, `clear 전에 정리해줘`, `snapshot 저장해줘`, `다음 세션에서 이어받게 정리해줘`.
 
-Use **Resume Mode** when the user asks to continue from an existing handoff. Resume examples: `handoff 이어받아`, `이전 작업 이어서`, `latest.md 보고 계속해`, `resume from handoff`, `continue from handoff`.
+Use **Resume Mode** when the user asks to continue from an existing handoff, especially after `/clear` or in a fresh same-agent session. Resume examples: `handoff 이어받아`, `이전 작업 이어서`, `latest.md 보고 계속해`, `resume from handoff`, `continue from handoff`.
 
 If unclear:
 
