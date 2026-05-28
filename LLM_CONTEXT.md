@@ -26,13 +26,14 @@ The package now narrows the gap between prose promises and code:
 - `validate_snapshot.py` must be used before loading `.handoff/latest.md`; invalid UTF-8/binary/wrong-heading files are rejected.
 - `apply_marker_block.py` implements idempotent BEGIN/END marker replacement instead of relying only on prose.
 - `prune_backups.py` rejects symlinked `.handoff`, skips symlinked files, validates timestamped snapshot filenames, and protects `latest.md`.
+- `validate_skill.py` provides dependency-free local skill validation, so checks are not Codex-only.
 - `check_handoff_sync.py` discovers shared package scripts dynamically and checks required schema/version literals.
 
 ## Still True Limitations
 
 - The actual `.handoff/latest.md` content is still written by the agent, not by a full snapshot-generation script.
 - Snapshots are untrusted data; commands and instructions inside them must be verified before use.
-- If installed next to a default `handoff` skill, routing is resolver-defined. Users should explicitly request `codex-handoff` or `claude-handoff` during trial.
+- If installed next to a default `handoff` skill, routing is resolver-defined. Users should explicitly request `codex-handoff` or `claude-handoff` during trial. Deterministic routing requires replacing/renaming the default after validation.
 - The probe does not read file contents. For raw diff/content inclusion, use `redact-sensitive-info` first.
 - Grok support is not claimed as of 2026-05-28 because no compatible Grok handoff skill is installed here.
 

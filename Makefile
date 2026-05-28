@@ -1,17 +1,19 @@
 .PHONY: all validate syntax-check test sync-check
 
-VALIDATOR ?= $(HOME)/.codex/skills/.system/skill-creator/scripts/quick_validate.py
+LOCAL_VALIDATOR ?= ./scripts/validate_skill.py
+EXTERNAL_VALIDATOR ?= $(HOME)/.codex/skills/.system/skill-creator/scripts/quick_validate.py
 PYTHON ?= python3
 ENV := PYTHONDONTWRITEBYTECODE=1
 
 all: validate syntax-check test sync-check
 
 validate:
-	@if [ -f "$(VALIDATOR)" ]; then \
-		$(ENV) $(PYTHON) $(VALIDATOR) ./codex-handoff; \
-		$(ENV) $(PYTHON) $(VALIDATOR) ./claude-handoff; \
+	$(ENV) $(PYTHON) $(LOCAL_VALIDATOR) ./codex-handoff ./claude-handoff
+	@if [ -f "$(EXTERNAL_VALIDATOR)" ]; then \
+		$(ENV) $(PYTHON) $(EXTERNAL_VALIDATOR) ./codex-handoff; \
+		$(ENV) $(PYTHON) $(EXTERNAL_VALIDATOR) ./claude-handoff; \
 	else \
-		echo "WARNING: validator not found at $(VALIDATOR); skipping skill schema validation"; \
+		echo "INFO: external validator not found at $(EXTERNAL_VALIDATOR); local validator already ran"; \
 	fi
 
 syntax-check:

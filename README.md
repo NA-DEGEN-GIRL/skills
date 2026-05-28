@@ -126,7 +126,7 @@ use codex-handoff to save state
 use claude-handoff to resume from handoff
 ```
 
-Verify empirically in a fresh agent session that the intended skill triggers. Only replace a default `handoff` skill after validating the agent-specific package.
+Verify empirically in a fresh agent session that the intended skill triggers. For deterministic routing, do not rely on coexistence: after validation, back up/replace the default `handoff` skill or install the improved package under the exact name the agent should route to.
 
 ## Validate
 
@@ -136,7 +136,7 @@ From this folder:
 make all
 ```
 
-This runs skill validation when the Codex validator exists, syntax checks without writing `.pyc` files, all smoke tests, and sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution.
+This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, all smoke tests, and sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution.
 
 ## Important Note
 
