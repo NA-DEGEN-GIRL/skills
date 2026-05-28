@@ -4,12 +4,16 @@ This folder contains local, portable handoff skill packages — one targeted at 
 
 Current package version: `0.1.1`.
 
+**LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It contains copy-paste-safe commands for installing the matching skill into Codex and/or Claude Code.
+
 ## Contents
 
 ```text
 useful-skills/
 ├── VERSION
 ├── README.md
+├── INSTALL.md
+├── AGENTS.md
 ├── LLM_CONTEXT.md
 ├── Makefile
 ├── scripts/check_handoff_sync.py

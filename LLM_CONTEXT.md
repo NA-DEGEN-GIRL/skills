@@ -11,10 +11,12 @@ The user asked to keep these local, agent-specific, and not patch installed glob
 
 ## Read Order
 
-1. `README.md` — human/LLM overview, installation, routing caveats.
-2. `codex-handoff/SKILL.md` and `claude-handoff/SKILL.md` — actual skill instructions.
-3. Shared scripts under `*/scripts/`.
-4. `scripts/check_handoff_sync.py` and `Makefile` — validation/sync surface.
+1. `INSTALL.md` — immediate install instructions for LLM agents given only the repo URL.
+2. `README.md` — human/LLM overview, installation, routing caveats.
+3. `AGENTS.md` — concise repo-local rules for coding agents.
+4. `codex-handoff/SKILL.md` and `claude-handoff/SKILL.md` — actual skill instructions.
+5. Shared scripts under `*/scripts/`.
+6. `scripts/check_handoff_sync.py` and `Makefile` — validation/sync surface.
 
 ## Important Guarantees
 
