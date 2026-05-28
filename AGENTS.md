@@ -5,6 +5,7 @@ This repo packages portable handoff skills for Codex and Claude Code.
 ## Start Here
 
 - For installation tasks, read `INSTALL.md` first.
+- For usage examples or user-facing prompts, read `USAGE.md`.
 - For project overview and safety boundaries, read `README.md`.
 - For maintenance context, read `LLM_CONTEXT.md`.
 - The actual skill entrypoints are `codex-handoff/SKILL.md` and `claude-handoff/SKILL.md`.

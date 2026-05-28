@@ -6,6 +6,8 @@ Current package version: `0.1.1`.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It contains copy-paste-safe commands for installing the matching skill into Codex and/or Claude Code.
 
+**Users:** read [`USAGE.md`](USAGE.md) for concrete Save/Resume prompts and cross-agent examples.
+
 ## Contents
 
 ```text
@@ -13,6 +15,7 @@ useful-skills/
 ├── VERSION
 ├── README.md
 ├── INSTALL.md
+├── USAGE.md
 ├── AGENTS.md
 ├── LLM_CONTEXT.md
 ├── Makefile
