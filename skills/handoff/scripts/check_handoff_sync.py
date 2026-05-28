@@ -7,9 +7,10 @@ import re
 import stat
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-CODEX = ROOT / "codex-handoff"
-CLAUDE = ROOT / "claude-handoff"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+FAMILY_ROOT = Path(__file__).resolve().parents[1]
+CODEX = FAMILY_ROOT / "codex-handoff"
+CLAUDE = FAMILY_ROOT / "claude-handoff"
 SCHEMA = "handoff-v1"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
@@ -31,7 +32,7 @@ def main() -> int:
 
     codex_version = read_version(CODEX)
     claude_version = read_version(CLAUDE)
-    root_version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    root_version = (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip()
     versions = {"root": root_version, "codex": codex_version, "claude": claude_version}
     if len(set(versions.values())) != 1 or not VERSION_RE.match(root_version):
         print(f"VERSION MISMATCH/INVALID: {versions}")

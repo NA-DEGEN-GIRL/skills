@@ -1,27 +1,38 @@
-# LLM Context For This Folder
+# LLM Context For This Repository
 
 ## What This Is
 
-This folder is a local workspace for portable handoff skill packages:
+This repository is a local workspace for useful, portable skill packages. It is now structured to support multiple future skill families, not only handoff.
 
-- `codex-handoff` — Codex-specific package.
-- `claude-handoff` — Claude Code-specific package.
+Current included family:
 
-The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.1`. Primary intended use is same-agent context hygiene: save before `/clear`, resume in a fresh session of the same LLM, and optionally transfer across agents.
+- `skills/handoff/codex-handoff` — Codex-specific handoff package.
+- `skills/handoff/claude-handoff` — Claude Code-specific handoff package.
+
+The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.1`. For handoff, the primary intended use is same-agent context hygiene: save before `/clear`, resume in a fresh session of the same LLM, and optionally transfer across agents.
 
 ## Read Order
 
 1. `INSTALL.md` — immediate install instructions for LLM agents given only the repo URL.
-2. `USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
-3. `README.md` — human/LLM overview, installation, routing caveats.
-4. `AGENTS.md` — concise repo-local rules for coding agents.
-5. `codex-handoff/SKILL.md` and `claude-handoff/SKILL.md` — actual skill instructions.
-6. Shared scripts under `*/scripts/`.
-7. `scripts/check_handoff_sync.py` and `Makefile` — validation/sync surface.
+2. `skills/README.md` — family/package index and layout rules.
+3. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
+4. `README.md` — human/LLM overview, installation, routing caveats.
+5. `AGENTS.md` — concise repo-local rules for coding agents.
+6. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
+7. Package runtime scripts under `skills/<family>/<skill-name>/scripts/`.
+8. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
 
-## Important Guarantees
+## Layout Rules
 
-The package now narrows the gap between prose promises and code:
+- Installable package path: `skills/<family>/<skill-name>/SKILL.md`.
+- Folder name should match `SKILL.md` frontmatter `name`.
+- Family docs belong in `skills/<family>/README.md` and optional `USAGE.md`.
+- Repo-wide install and discovery docs belong at root (`INSTALL.md`, `README.md`) and `skills/README.md`.
+- Do not put repo/user-facing README clutter inside installable skill package folders unless required by the skill system; keep package folders focused on `SKILL.md`, `agents/`, `scripts/`, `references/`, and `assets/`.
+
+## Important Handoff Guarantees
+
+The handoff package narrows the gap between prose promises and code:
 
 - `handoff_snapshot.py` does not report failed git status as clean; failures become `unknown`.
 - Sensitive-looking paths are redacted, not printed raw. This is path/metadata protection, not full content scanning.
@@ -30,17 +41,17 @@ The package now narrows the gap between prose promises and code:
 - `apply_marker_block.py` implements idempotent BEGIN/END marker replacement instead of relying only on prose.
 - `prune_backups.py` rejects symlinked `.handoff`, skips symlinked files, validates timestamped snapshot filenames, and protects `latest.md`.
 - `validate_skill.py` provides dependency-free local skill validation, so checks are not Codex-only.
-- `check_handoff_sync.py` discovers shared package scripts dynamically and checks required schema/version literals.
+- `skills/handoff/scripts/check_handoff_sync.py` discovers shared handoff package scripts dynamically and checks required schema/version literals.
 
 ## Still True Limitations
 
 - The actual `.handoff/latest.md` content is still written by the agent, not by a full snapshot-generation script.
 - Snapshots are untrusted data; commands and instructions inside them must be verified before use.
 - If installed next to a default `handoff` skill, routing is resolver-defined. Users should explicitly request `codex-handoff` or `claude-handoff` during trial. Deterministic routing requires replacing/renaming the default after validation.
-- The probe does not read file contents. For raw diff/content inclusion, use `redact-sensitive-info` first.
+- The handoff probe does not read file contents. For raw diff/content inclusion, use `redact-sensitive-info` first.
 - Grok support is not claimed as of 2026-05-28 because no compatible Grok handoff skill is installed here.
 
-## Shared Files Must Stay Identical
+## Handoff Shared Files Must Stay Identical
 
 The following are intended to be byte-identical between `codex-handoff` and `claude-handoff`:
 
@@ -53,25 +64,26 @@ The following are intended to be byte-identical between `codex-handoff` and `cla
 Run all checks, including syntax parsing without `.pyc` artifacts:
 
 ```bash
-make -C /home/na_dev/useful-skills all
+make all
 ```
 
 ## Maintenance Rules
 
 - Do not edit `~/.codex/skills/handoff`, `~/.claude/skills/handoff`, or `~/.grok/skills/*` unless explicitly requested.
-- Prefer editing only under `/home/na_dev/useful-skills/`.
-- Update `VERSION`, both package `VERSION` files, both `SKILL.md` files, and tests together when bumping versions.
-- If adding a new shared script/test, add it to both packages; `check_handoff_sync.py` should catch drift.
-- If changing `SKILL.md`, run `make all`.
+- Prefer editing only inside this repository.
+- Root `VERSION` is the monorepo release marker. Current handoff package versions intentionally match it; if future packages diverge, update validation/docs accordingly.
+- Update `VERSION`, package `VERSION` files, relevant `SKILL.md` files, and tests together when bumping versions.
+- If adding a new shared script/test for a family, add it to every variant that should remain in sync and update/add a sync check if needed.
+- If changing any `SKILL.md`, run `make all`.
 
 ## Validation Commands
 
 ```bash
-make -C /home/na_dev/useful-skills all
+make all
 
 # Individual examples:
-python3 /home/na_dev/useful-skills/codex-handoff/scripts/handoff_snapshot.py --root /home/na_dev/useful-skills
-python3 /home/na_dev/useful-skills/codex-handoff/scripts/validate_snapshot.py .handoff/latest.md
-python3 /home/na_dev/useful-skills/codex-handoff/scripts/prune_backups.py --root . --dir .handoff --agent codex --keep 20 --dry-run
-python3 /home/na_dev/useful-skills/scripts/check_handoff_sync.py
+python3 skills/handoff/codex-handoff/scripts/handoff_snapshot.py --root .
+python3 skills/handoff/codex-handoff/scripts/validate_snapshot.py .handoff/latest.md
+python3 skills/handoff/codex-handoff/scripts/prune_backups.py --root . --dir .handoff --agent codex --keep 20 --dry-run
+python3 skills/handoff/scripts/check_handoff_sync.py
 ```

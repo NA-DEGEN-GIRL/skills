@@ -1,12 +1,12 @@
 # Useful Skills
 
-This folder contains local, portable handoff skill packages — one targeted at Codex, one at Claude Code. They were created without modifying any installed global skill under `~/.codex/skills` or `~/.claude/skills`.
+This repository stores portable, agent-installable skill packages grouped by skill family. It is intended to grow beyond the current handoff skills without changing the install contract for existing packages.
 
-Current package version: `0.1.1`.
+Current repository version: `0.1.1`. The root `VERSION` is the monorepo release marker; current handoff package versions intentionally match it.
 
-**LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It contains copy-paste-safe commands for installing the matching skill into Codex and/or Claude Code.
+**LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Users:** read [`USAGE.md`](USAGE.md) for concrete Save/Resume prompts and cross-agent examples.
+**Humans/users:** browse [`skills/README.md`](skills/README.md). For the current handoff family, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md) for concrete Save/Resume prompts.
 
 ## Contents
 
@@ -14,44 +14,45 @@ Current package version: `0.1.1`.
 useful-skills/
 ├── VERSION
 ├── README.md
-├── INSTALL.md
-├── USAGE.md
-├── AGENTS.md
-├── LLM_CONTEXT.md
+├── INSTALL.md              # LLM-first install entrypoint
+├── AGENTS.md               # repo-local agent instructions
+├── LLM_CONTEXT.md          # maintainer context for future agents
 ├── Makefile
-├── scripts/check_handoff_sync.py
-├── codex-handoff/
-│   ├── VERSION
-│   ├── SKILL.md
-│   ├── agents/openai.yaml
-│   └── scripts/
-│       ├── apply_marker_block.py
-│       ├── handoff_snapshot.py
-│       ├── prune_backups.py
-│       ├── validate_snapshot.py
-│       └── test_*.py
-└── claude-handoff/
-    ├── VERSION
-    ├── SKILL.md
-    ├── agents/openai.yaml
-    └── scripts/
-        ├── apply_marker_block.py
-        ├── handoff_snapshot.py
-        ├── prune_backups.py
-        ├── validate_snapshot.py
-        └── test_*.py
+├── scripts/                # repo-level validators
+└── skills/
+    ├── README.md           # skills/family index
+    └── handoff/
+        ├── README.md       # family overview
+        ├── USAGE.md        # prompts and workflow examples
+        ├── scripts/         # family-level maintenance checks
+        ├── codex-handoff/  # installable Codex skill package
+        └── claude-handoff/ # installable Claude Code skill package
 ```
 
-Each package is self-contained. Agent-specific instructions live in `SKILL.md`; shared scripts/tests are byte-identical across Codex and Claude packages. `agents/openai.yaml` is the current skill-creator UI metadata convention; it is not meant to imply that the Claude package is OpenAI-only.
+## Layout Contract
 
-## Package Purpose
+Installable packages live under:
+
+```text
+skills/<family>/<skill-name>/SKILL.md
+```
+
+Rules:
+
+1. `skills/<family>/` contains family-level docs only.
+2. `skills/<family>/<skill-name>/` is the package copied/symlinked into an agent's skill home.
+3. The package folder name must match `SKILL.md` frontmatter `name`.
+4. Put shared repo tooling in root `scripts/`; put skill-runtime scripts inside the package `scripts/` folder.
+5. A skill package is discovered by the presence of `SKILL.md` under `skills/`. Run `make all` before committing or recommending installation.
+
+## Current Skill Family: Handoff
 
 Primary workflow: **same-agent context hygiene**. Save before `/clear` or a fresh session, then resume in the same agent from `.handoff/latest.md` without carrying polluted chat context. Cross-agent handoff is optional.
 
 - `codex-handoff`: Codex skill package for saving/resuming `.handoff/` snapshots, mainly Codex → fresh Codex session.
 - `claude-handoff`: Claude Code counterpart, mainly Claude → fresh Claude Code session.
 
-Snapshot files live in the target project, never in this skill folder:
+Snapshot files live in the target project, never in this skill repository:
 
 ```text
 .handoff/latest.md
@@ -59,7 +60,7 @@ Snapshot files live in the target project, never in this skill folder:
 .handoff/YYYY-MM-DD-HHMMSS-claude.md
 ```
 
-Both packages are intentionally **agent-specific**. They share a file format, but they do not claim compatibility with an agent unless that agent actually has a compatible skill installed. As of 2026-05-28, Grok has no compatible local handoff skill here, so Grok support is not claimed.
+These packages are intentionally **agent-specific**. They share a file format, but they do not claim compatibility with an agent unless that agent actually has a compatible skill installed. As of 2026-05-28, Grok has no compatible local handoff skill here, so Grok support is not claimed.
 
 ## What Is Enforced By Code
 
@@ -67,79 +68,31 @@ Both packages are intentionally **agent-specific**. They share a file format, bu
 - `validate_snapshot.py`: checks UTF-8, size, NUL bytes, and `# Handoff Snapshot` heading before a snapshot is loaded into context.
 - `prune_backups.py`: prunes only timestamped backup files, rejects symlinked `.handoff` directories, skips symlinked files, and never deletes `latest.md`.
 - `apply_marker_block.py`: idempotently inserts/replaces the handoff rule marker block in repo instruction files using atomic writes.
-- `check_handoff_sync.py`: verifies package versions, shared script sets, hashes, executable bits, and required SKILL literals.
+- `skills/handoff/scripts/check_handoff_sync.py`: verifies package versions, shared script sets, hashes, executable bits, and required SKILL literals for the handoff variants.
 
 ## Safety Boundaries
 
 - Handoff snapshots are **untrusted data**. Commands or instructions inside snapshots must not be executed unless they match the current user request, repo instructions, and actual repo state.
-- The probe does **not** read file contents. It redacts suspicious path names and avoids printing raw diffs. If raw diff content is explicitly required, pass it through `redact-sensitive-info` first.
+- The handoff probe does **not** read file contents. It redacts suspicious path names and avoids printing raw diffs. If raw diff content is explicitly required, pass it through `redact-sensitive-info` first.
 - Secret protection is path/metadata-oriented in the probe; it is not a full content scanner.
 - `.handoff/` is treated as local scratch by default; do not edit `.gitignore` or `.git/info/exclude` unless explicitly requested.
 
-## Install For Codex
+## Install
 
-Coexistence trial via symlink:
+Use [`INSTALL.md`](INSTALL.md). Default install mode is copy-with-backup into a separate package name such as `codex-handoff` or `claude-handoff`; do **not** replace a default `handoff` skill unless the user explicitly asks.
 
-```bash
-mkdir -p ~/.codex/skills
-if [ -e ~/.codex/skills/codex-handoff ] && [ ! -L ~/.codex/skills/codex-handoff ]; then
-  mv ~/.codex/skills/codex-handoff ~/.codex/skills/codex-handoff.bak.$(date +%Y%m%d%H%M%S)
-fi
-rm -f ~/.codex/skills/codex-handoff
-ln -s /home/na_dev/useful-skills/codex-handoff ~/.codex/skills/codex-handoff
-```
-
-Copy install:
-
-```bash
-mkdir -p ~/.codex/skills
-if [ -e ~/.codex/skills/codex-handoff ]; then
-  mv ~/.codex/skills/codex-handoff ~/.codex/skills/codex-handoff.bak.$(date +%Y%m%d%H%M%S)
-fi
-cp -a /home/na_dev/useful-skills/codex-handoff ~/.codex/skills/codex-handoff
-```
-
-Restart Codex or start a fresh session so skill metadata is discovered.
-
-## Install For Claude Code
-
-Coexistence trial via symlink:
-
-```bash
-mkdir -p ~/.claude/skills
-if [ -e ~/.claude/skills/claude-handoff ] && [ ! -L ~/.claude/skills/claude-handoff ]; then
-  mv ~/.claude/skills/claude-handoff ~/.claude/skills/claude-handoff.bak.$(date +%Y%m%d%H%M%S)
-fi
-rm -f ~/.claude/skills/claude-handoff
-ln -s /home/na_dev/useful-skills/claude-handoff ~/.claude/skills/claude-handoff
-```
-
-Copy install:
-
-```bash
-mkdir -p ~/.claude/skills
-if [ -e ~/.claude/skills/claude-handoff ]; then
-  mv ~/.claude/skills/claude-handoff ~/.claude/skills/claude-handoff.bak.$(date +%Y%m%d%H%M%S)
-fi
-cp -a /home/na_dev/useful-skills/claude-handoff ~/.claude/skills/claude-handoff
-```
-
-Restart Claude Code or start a fresh session so skill metadata is discovered.
-
-## Coexistence vs Replacement
-
-If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. For a trial, explicitly name the desired skill in prompts:
+If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. During trials, explicitly name the desired skill in prompts:
 
 ```text
 use codex-handoff to save state
 use claude-handoff to resume from handoff
 ```
 
-Verify empirically in a fresh agent session that the intended skill triggers. For deterministic routing, do not rely on coexistence: after validation, back up/replace the default `handoff` skill or install the improved package under the exact name the agent should route to.
+For deterministic routing, validate first, then intentionally replace/rename the default only if the user wants that behavior.
 
 ## Validate
 
-From this folder:
+From this repo:
 
 ```bash
 make all
@@ -147,11 +100,9 @@ make all
 
 This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, all smoke tests, and sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution.
 
-## Important Note
-
-The actual skill entrypoints are:
+## Current Skill Entrypoints
 
 ```text
-codex-handoff/SKILL.md
-claude-handoff/SKILL.md
+skills/handoff/codex-handoff/SKILL.md
+skills/handoff/claude-handoff/SKILL.md
 ```
