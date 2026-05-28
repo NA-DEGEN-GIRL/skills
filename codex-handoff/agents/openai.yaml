@@ -1,0 +1,4 @@
+# Skill-creator UI metadata convention. This filename is not an OpenAI-only claim.
+display_name: Codex Handoff
+short_description: Save and resume Codex handoff snapshots.
+default_prompt: Create or resume a compact repo-local handoff snapshot for Codex using .handoff/latest.md.
