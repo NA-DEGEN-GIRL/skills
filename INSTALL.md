@@ -14,8 +14,9 @@ This is the stable LLM-first entrypoint. The repository may contain multiple ski
 |---|---|---|---|
 | handoff | Codex | `skills/handoff/codex-handoff/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff` |
 | handoff | Claude Code | `skills/handoff/claude-handoff/` | `$HOME/.claude/skills/claude-handoff` |
+| subagents | Codex | `skills/subagents/design-repo-subagents/` | `${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents` |
 
-Do **not** replace existing default `handoff` skills unless the user explicitly asks for replacement. Install the current handoff packages as separate `codex-handoff` / `claude-handoff` skills by default.
+Do **not** replace existing default `handoff` skills unless the user explicitly asks for replacement. Install the current handoff packages as separate `codex-handoff` / `claude-handoff` skills by default. The subagents package intentionally uses the existing `design-repo-subagents` name; back up any same-name destination before replacing it.
 
 ## Quick Install From Repo URL
 
@@ -41,6 +42,7 @@ make all
    - Codex + handoff: install `codex-handoff` only.
    - Claude Code + handoff: install `claude-handoff` only.
    - Both + handoff: install both.
+   - Codex + subagents: install `design-repo-subagents`.
 4. If the target agent is unclear, ask one short question: `Codex용, Claude용, 둘 다 중 무엇을 설치할까요?`
 
 ## Safe Copy Install Commands
@@ -75,6 +77,20 @@ fi
 cp -a "$src" "$dest"
 ```
 
+### Codex subagents
+
+```bash
+src="$PWD/skills/subagents/design-repo-subagents"
+dest="${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents"
+mkdir -p "$(dirname "$dest")"
+if [ -L "$dest" ]; then
+  rm "$dest"
+elif [ -e "$dest" ]; then
+  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
+fi
+cp -a "$src" "$dest"
+```
+
 ## Optional Symlink Install
 
 Use symlinks only if the clone path is persistent and the user wants updates to track the working copy.
@@ -87,6 +103,10 @@ ln -sfn "$PWD/skills/handoff/codex-handoff" "${CODEX_HOME:-$HOME/.codex}/skills/
 # Claude Code handoff
 mkdir -p "$HOME/.claude/skills"
 ln -sfn "$PWD/skills/handoff/claude-handoff" "$HOME/.claude/skills/claude-handoff"
+
+# Codex subagents
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+ln -sfn "$PWD/skills/subagents/design-repo-subagents" "${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents"
 ```
 
 ## Generic Rule For Future Packages
@@ -101,10 +121,10 @@ If a future package is added under `skills/<family>/<skill-name>/`:
 
 Tell the user to restart the target agent or open a fresh session so skill metadata is discovered.
 
-Suggested final message for current handoff installs:
+Suggested final message:
 
 ```text
-Installed codex-handoff/claude-handoff. Restart Codex/Claude Code or start a fresh session to pick up the new skill. During trial, explicitly request `codex-handoff` or `claude-handoff` because default `handoff` may still coexist.
+Installed the requested skill package(s). Restart Codex/Claude Code or start a fresh session to pick up the new skill. For handoff trials, explicitly request `codex-handoff` or `claude-handoff` because default `handoff` may still coexist.
 ```
 
 ## Routing Caveat

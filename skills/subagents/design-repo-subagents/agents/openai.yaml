@@ -1,0 +1,5 @@
+# Skill-creator UI metadata convention. This filename is not an OpenAI-only claim.
+interface:
+  display_name: "Design Repo Subagents"
+  short_description: "Plan and operate repo-specific Codex subagents safely"
+  default_prompt: "Use $design-repo-subagents to inspect this repo and design a safe Codex subagent plan."

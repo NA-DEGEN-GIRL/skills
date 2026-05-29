@@ -2,11 +2,11 @@
 
 This repository stores portable, agent-installable skill packages grouped by skill family. It is intended to grow beyond the current handoff skills without changing the install contract for existing packages.
 
-Current repository version: `0.1.2`. The root `VERSION` is the monorepo release marker; current handoff package versions intentionally match it.
+Current repository version: `0.1.2`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Humans/users:** browse [`skills/README.md`](skills/README.md). For the current handoff family, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md) for concrete Save/Resume prompts.
+**Humans/users:** browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md) or [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md).
 
 ## Contents
 
@@ -21,12 +21,16 @@ useful-skills/
 ├── scripts/                # repo-level validators
 └── skills/
     ├── README.md           # skills/family index
-    └── handoff/
+    ├── handoff/
         ├── README.md       # family overview
         ├── USAGE.md        # prompts and workflow examples
         ├── scripts/         # family-level maintenance checks
         ├── codex-handoff/  # installable Codex skill package
         └── claude-handoff/ # installable Claude Code skill package
+    └── subagents/
+        ├── README.md       # family overview
+        ├── USAGE.md        # examples for planning/spawning
+        └── design-repo-subagents/ # installable Codex skill package
 ```
 
 ## Layout Contract
@@ -45,7 +49,9 @@ Rules:
 4. Put shared repo tooling in root `scripts/`; put skill-runtime scripts inside the package `scripts/` folder.
 5. A skill package is discovered by the presence of `SKILL.md` under `skills/`. Run `make all` before committing or recommending installation.
 
-## Current Skill Family: Handoff
+## Current Skill Families
+
+### Handoff
 
 Primary workflow: **same-agent context hygiene**. Save before `/clear` or a fresh session, then resume in the same agent from `.handoff/latest.md` without carrying polluted chat context. Cross-agent handoff is optional.
 
@@ -62,7 +68,13 @@ Snapshot files live in the target project, never in this skill repository:
 
 These packages are intentionally **agent-specific**. They share a file format, but they do not claim compatibility with an agent unless that agent actually has a compatible skill installed. As of 2026-05-28, Grok has no compatible local handoff skill here, so Grok support is not claimed.
 
-## What Is Enforced By Code
+### Subagents
+
+The subagents family helps Codex inspect a repository and decide how to use explorer, worker, and verification subagents safely. The installable package is `skills/subagents/design-repo-subagents/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
+
+Primary workflow: repo-grounded delegation planning. Actual spawning is recommended only when the user explicitly asks for subagents, delegation, parallel agent work, or a critical/비판 agent.
+
+## What Handoff Enforces By Code
 
 - `handoff_snapshot.py`: emits safe repo-state metadata without raw file contents or raw diff hunks; preserves git failures as `unknown`; redacts sensitive-looking paths; bounds non-git scans.
 - `validate_snapshot.py`: checks UTF-8, size, NUL bytes, and `# Handoff Snapshot` heading before a snapshot is loaded into context.
@@ -105,4 +117,5 @@ This runs the repo-local portable skill validator, the external Codex validator 
 ```text
 skills/handoff/codex-handoff/SKILL.md
 skills/handoff/claude-handoff/SKILL.md
+skills/subagents/design-repo-subagents/SKILL.md
 ```

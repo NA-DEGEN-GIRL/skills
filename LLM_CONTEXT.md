@@ -4,23 +4,25 @@
 
 This repository is a local workspace for useful, portable skill packages. It is now structured to support multiple future skill families, not only handoff.
 
-Current included family:
+Current included families:
 
 - `skills/handoff/codex-handoff` — Codex-specific handoff package.
 - `skills/handoff/claude-handoff` — Claude Code-specific handoff package.
+- `skills/subagents/design-repo-subagents` — Codex-specific subagent planning/operation package.
 
-The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.2`. For handoff, the primary intended use is same-agent context hygiene: save before `/clear`, resume in a fresh session of the same LLM, and optionally transfer across agents.
+The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.2`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation.
 
 ## Read Order
 
 1. `INSTALL.md` — immediate install instructions for LLM agents given only the repo URL.
 2. `skills/README.md` — family/package index and layout rules.
 3. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
-4. `README.md` — human/LLM overview, installation, routing caveats.
-5. `AGENTS.md` — concise repo-local rules for coding agents.
-6. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
-7. Package runtime scripts under `skills/<family>/<skill-name>/scripts/`.
-8. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
+4. `skills/subagents/USAGE.md` — subagent planning/spawn examples.
+5. `README.md` — human/LLM overview, installation, routing caveats.
+6. `AGENTS.md` — concise repo-local rules for coding agents.
+7. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
+8. Package runtime scripts under `skills/<family>/<skill-name>/scripts/`.
+9. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
 
 ## Layout Rules
 
@@ -42,6 +44,13 @@ The handoff package narrows the gap between prose promises and code:
 - `prune_backups.py` rejects symlinked `.handoff`, skips symlinked files, validates timestamped snapshot filenames, and protects `latest.md`.
 - `validate_skill.py` provides dependency-free local skill validation, so checks are not Codex-only.
 - `skills/handoff/scripts/check_handoff_sync.py` discovers shared handoff package scripts dynamically and checks required schema/version literals.
+
+## Subagents Notes
+
+- `design-repo-subagents` intentionally keeps the existing installed skill name so copy install can replace it after timestamp backup.
+- It is Codex-specific because actual subagent tools and roles are Codex-oriented.
+- It should recommend actual spawning only when the user explicitly asks for subagents, delegation, parallel work, or critical/비판 agents.
+- It should otherwise produce copy-ready prompts and a coordination plan.
 
 ## Still True Limitations
 
@@ -71,7 +80,7 @@ make all
 
 - Do not edit `~/.codex/skills/handoff`, `~/.claude/skills/handoff`, or `~/.grok/skills/*` unless explicitly requested.
 - Prefer editing only inside this repository.
-- Root `VERSION` is the monorepo release marker. Current handoff package versions intentionally match it; if future packages diverge, update validation/docs accordingly.
+- Root `VERSION` is the monorepo release marker. Current package versions intentionally match it; if future packages diverge, update validation/docs accordingly.
 - Update `VERSION`, package `VERSION` files, relevant `SKILL.md` files, and tests together when bumping versions.
 - If adding a new shared script/test for a family, add it to every variant that should remain in sync and update/add a sync check if needed.
 - If changing any `SKILL.md`, run `make all`.
