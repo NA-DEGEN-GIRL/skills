@@ -17,6 +17,7 @@ REQUIRED_HEADING = "# Handoff Snapshot"
 MAX_DEFAULT_BYTES = 1024 * 1024
 SCOPES_DIRNAME = "scopes"
 SCOPE_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+RESERVED_SCOPES = {"default", "latest", "scopes"}
 METADATA_RE = re.compile(r"^-\s*([^:]+):\s*(.*)$")
 
 
@@ -37,6 +38,10 @@ def read_snapshot(path: Path, max_bytes: int) -> tuple[str | None, str]:
     if first != REQUIRED_HEADING:
         return None, "missing handoff heading"
     return text, "ok"
+
+
+def valid_scope(scope: str) -> bool:
+    return bool(SCOPE_RE.match(scope)) and scope not in RESERVED_SCOPES
 
 
 def parse_metadata(text: str) -> dict[str, str]:
@@ -80,7 +85,7 @@ def lane_snapshots(handoff: Path) -> list[tuple[str, Path]]:
         for entry in sorted(scopes_root.iterdir()):
             if entry.is_symlink() or not entry.is_dir():
                 continue
-            if not SCOPE_RE.match(entry.name):
+            if not valid_scope(entry.name):
                 continue
             latest = entry / "latest.md"
             if latest.is_file():

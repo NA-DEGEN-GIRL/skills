@@ -43,6 +43,12 @@ def test_list_lanes() -> None:
         write(handoff / "scopes" / "auth-refactor" / "latest.md", SNAPSHOT.format(scope="auth-refactor", goal="auth lane goal"))
         # invalid slug directory -> skipped
         write(handoff / "scopes" / "Bad_Name" / "latest.md", SNAPSHOT.format(scope="Bad_Name", goal="should be skipped"))
+        # reserved scope names also match the slug regex but must be skipped
+        for reserved in ("default", "latest", "scopes"):
+            write(
+                handoff / "scopes" / reserved / "latest.md",
+                SNAPSHOT.format(scope=reserved, goal=f"reserved-{reserved}-goal"),
+            )
         # valid slug but invalid snapshot -> marked INVALID
         write(handoff / "scopes" / "broken" / "latest.md", "not a handoff file\n")
         out = run([sys.executable, str(SCRIPT), "--root", str(root)]).stdout
@@ -50,6 +56,8 @@ def test_list_lanes() -> None:
         check("auth-refactor" in out, "valid scoped lane should be listed")
         check("auth lane goal" in out, "first goal line should be shown")
         check("Bad_Name" not in out, "invalid-slug lane should be skipped")
+        for reserved in ("default", "latest", "scopes"):
+            check(f"reserved-{reserved}-goal" not in out, f"reserved scope {reserved} should be skipped")
         check("broken: INVALID" in out, "broken snapshot should be marked INVALID")
 
 

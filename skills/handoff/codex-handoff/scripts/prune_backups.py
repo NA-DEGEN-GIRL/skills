@@ -121,7 +121,7 @@ def resolve_lanes(directory: Path, scope: str | None, all_lanes: bool) -> list[P
                     continue
                 if not entry.is_dir():
                     continue
-                if not SCOPE_RE.match(entry.name):
+                if not valid_scope(entry.name):
                     print(f"Warning: skipping non-scope directory: {entry.name}")
                     continue
                 lanes.append(entry)
