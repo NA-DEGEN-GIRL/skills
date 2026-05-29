@@ -2,7 +2,7 @@
 
 This repository stores portable, agent-installable skill packages grouped by skill family. It is intended to grow beyond the current handoff skills without changing the install contract for existing packages.
 
-Current repository version: `0.1.4`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.5`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 

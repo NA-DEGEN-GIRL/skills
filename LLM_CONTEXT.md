@@ -11,7 +11,7 @@ Current included families:
 - `skills/subagents/design-repo-subagents` — Codex-specific subagent planning/operation package.
 - `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 
-The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.4`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review.
+The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.5`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review.
 
 ## Read Order
 

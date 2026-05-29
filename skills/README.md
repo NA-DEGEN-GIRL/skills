@@ -6,9 +6,9 @@ This directory contains installable skill packages grouped by skill family.
 
 | Family | Purpose | Variants | Version | Docs |
 |---|---|---|---|---|
-| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.4` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
-| `subagents` | Design and operate repo-specific Codex subagent delegation plans | `design-repo-subagents` | `0.1.4` | [`subagents/README.md`](subagents/README.md), [`subagents/USAGE.md`](subagents/USAGE.md) |
-| `repo-instructions` | Draft/review repo-local AGENTS.md instructions from repo facts | `write-agents-md` | `0.1.4` | [`repo-instructions/README.md`](repo-instructions/README.md), [`repo-instructions/USAGE.md`](repo-instructions/USAGE.md) |
+| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.5` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
+| `subagents` | Design and operate repo-specific Codex subagent delegation plans | `design-repo-subagents` | `0.1.5` | [`subagents/README.md`](subagents/README.md), [`subagents/USAGE.md`](subagents/USAGE.md) |
+| `repo-instructions` | Draft/review repo-local AGENTS.md instructions from repo facts | `write-agents-md` | `0.1.5` | [`repo-instructions/README.md`](repo-instructions/README.md), [`repo-instructions/USAGE.md`](repo-instructions/USAGE.md) |
 
 ## Layout Convention
 
