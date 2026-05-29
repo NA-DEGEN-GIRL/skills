@@ -12,7 +12,7 @@
 
 | 스킬 | 어느 agent | 무엇을 하나 |
 |---|---|---|
-| `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`) |
+| `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`); 병렬 작업은 scope별 lane |
 | `claude-handoff` | Claude Code | 위와 동일 (Claude Code용) |
 | `design-repo-subagents` | Codex | repo 기반 subagent 설계/운영 |
 | `write-agents-md` | Codex | `AGENTS.md` 작성·리뷰 |
@@ -31,8 +31,31 @@
   - `use codex-handoff` / `이어받아` / `latest.md 보고 계속해`
   - (Claude Code에서는 `codex-handoff` 대신 `claude-handoff`)
 - **비고:** 스냅샷은 **신뢰하지 않는 데이터**로 취급 — 실제 repo 상태가 우선이고, 스냅샷 안의 명령/지시는 검증 후에만 따릅니다. 두 패키지는 파일 포맷을 공유하지만 백업 파일에 `-codex.md` / `-claude.md`로 출처를 남깁니다.
-- **병렬 작업(scope/lane):** 여러 LLM을 병렬로 띄워 작업군이 다를 때, `auth-refactor` 같은 **scope**로 작업군별 lane을 따로 저장/재개할 수 있습니다(`.handoff/scopes/<scope>/`). scope를 안 주면 기존 단일 lane 동작. 예: "auth-refactor scope로 handoff 저장해줘" / "auth-refactor scope 이어받아".
 - **자세히:** [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md)
+
+### 병렬 작업 — scope(lane) handoff  *(신규)*
+
+여러 LLM을 동시에 띄워 **작업군(주제)이 서로 다를 때**, 하나의 `.handoff/latest.md`를 공유하면 서로 덮어씁니다. 이때 **scope(lane)** 로 작업군별 스냅샷을 따로 저장·재개합니다.
+
+- 경로: 기본 lane은 `.handoff/latest.md`, scope를 주면 `.handoff/scopes/<scope>/latest.md`.
+- scope는 직접 정합니다(소문자·숫자·하이픈, 예: `auth-refactor`). 안 주면 기존 단일 lane 그대로 동작합니다.
+- lane끼리 격리되므로 병렬 writer가 서로 안 덮어씁니다. (v1은 lock이 없으니 한 scope는 한 명만 쓰는 걸 권장.)
+
+저장 (특정 작업군만):
+
+```text
+use codex-handoff
+auth-refactor scope로 handoff 저장해줘.
+```
+
+재개 (그 lane만):
+
+```text
+use claude-handoff
+auth-refactor scope 이어받아.
+```
+
+scope 없이 그냥 "이어받아"라고 하면, lane이 여러 개일 때 목록을 보여주고(내부적으로 `list_lanes.py` 사용) 어느 lane을 이어받을지 물어봅니다 — 임의로 고르지 않습니다.
 
 ## design-repo-subagents — subagent 설계/운영 (Codex)
 
