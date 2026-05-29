@@ -5,7 +5,7 @@ description: Inspect a repository and draft, review, or update AGENTS.md with co
 
 # Write AGENTS.md
 
-**Skill Version:** 0.1.5
+**Skill Version:** 0.1.6
 
 Use this skill to produce practical repo-local instructions grounded in the actual project. Keep `AGENTS.md` concise, operational, and specific enough that a coding agent can work safely without re-learning the repo each turn.
 

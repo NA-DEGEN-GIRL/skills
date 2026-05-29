@@ -2,4 +2,4 @@
 interface:
   display_name: "Claude Handoff"
   short_description: "Save and resume Claude handoff snapshots"
-  default_prompt: "Use $claude-handoff to create or resume a compact repo-local handoff snapshot."
+  default_prompt: "Use $claude-handoff to create or resume a compact repo-local handoff snapshot, including scoped per-task lanes."

@@ -2,4 +2,4 @@
 interface:
   display_name: "Codex Handoff"
   short_description: "Save and resume Codex handoff snapshots"
-  default_prompt: "Use $codex-handoff to create or resume a compact repo-local handoff snapshot."
+  default_prompt: "Use $codex-handoff to create or resume a compact repo-local handoff snapshot, including scoped per-task lanes."

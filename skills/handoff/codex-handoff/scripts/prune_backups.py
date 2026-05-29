@@ -119,8 +119,12 @@ def resolve_lanes(directory: Path, scope: str | None, all_lanes: bool) -> list[P
                 if entry.is_symlink():
                     print(f"Warning: skipping symlinked lane: {entry.name}")
                     continue
-                if entry.is_dir():
-                    lanes.append(entry)
+                if not entry.is_dir():
+                    continue
+                if not SCOPE_RE.match(entry.name):
+                    print(f"Warning: skipping non-scope directory: {entry.name}")
+                    continue
+                lanes.append(entry)
         return lanes
     return [directory]
 

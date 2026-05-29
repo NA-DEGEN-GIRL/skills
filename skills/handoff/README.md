@@ -16,6 +16,8 @@ Codex Save -> Claude Resume
 Claude Save -> Codex Resume
 ```
 
+Both variants also support optional **scoped lanes** (`.handoff/scopes/<scope>/`) so parallel agents can save/resume a specific task-group instead of one shared snapshot; omit a scope for the single default lane. See [`USAGE.md`](USAGE.md).
+
 ## Variants
 
 | Variant | Install destination | Use when |

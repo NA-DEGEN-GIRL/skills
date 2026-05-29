@@ -101,9 +101,15 @@ def test_all_lanes() -> None:
             d = handoff / "scopes" / scope
             d.mkdir(parents=True)
             create_backups(d, "codex")
+        # a non-scope-name directory under scopes/ must be ignored by --all-lanes
+        bad = handoff / "scopes" / "Bad_Name"
+        bad.mkdir(parents=True)
+        create_backups(bad, "codex")
         result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--all-lanes", "--agent", "codex", "--keep", "20"])
         check("== Lane:" in result.stdout, "all-lanes should print per-lane headers")
+        check("skipping non-scope directory: Bad_Name" in result.stdout, "invalid-slug dir should be skipped by --all-lanes")
         check(len(list(handoff.glob("2026-05-28-*-codex.md"))) == 20, "default lane should be pruned to 20")
+        check(len(list(bad.glob("2026-05-28-*-codex.md"))) == 25, "invalid-slug dir must be left untouched")
         for scope in ("auth-refactor", "ui"):
             d = handoff / "scopes" / scope
             check(len(list(d.glob("2026-05-28-*-codex.md"))) == 20, f"scoped lane {scope} should be pruned to 20")

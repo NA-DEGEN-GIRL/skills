@@ -16,7 +16,7 @@ This repository stores portable, agent-installable skill packages grouped by ski
 
 각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. handoff는 같은 agent 내 맥락 위생이 주 용도이고, `orient-repo`만 Codex·Claude 공용입니다.
 
-Current repository version: `0.1.5`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.6`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 

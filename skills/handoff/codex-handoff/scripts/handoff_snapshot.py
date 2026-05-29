@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-DEFAULT_VERSION = "0.1.1"
+DEFAULT_VERSION = "0.1.6"
 SCHEMA_VERSION = "handoff-v1"
 
 EXCLUDE_DIRS = {

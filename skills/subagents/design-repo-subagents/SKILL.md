@@ -5,7 +5,7 @@ description: Inspect a repository and design or operate practical Codex subagent
 
 # Design Repo Subagents
 
-**Skill Version:** 0.1.5
+**Skill Version:** 0.1.6
 
 Use this Codex-specific skill to turn a real repository task into a safe subagent plan, and when explicitly authorized, into actual subagent delegation. Prefer repo facts over generic advice.
 

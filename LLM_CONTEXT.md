@@ -12,7 +12,7 @@ Current included families:
 - `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 - `skills/repo-orientation/orient-repo` — agent-neutral, read-only repo orientation package (installed to both `~/.codex` and `~/.claude`).
 
-The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.5`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
+The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.6`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
 
 ## Read Order
 
