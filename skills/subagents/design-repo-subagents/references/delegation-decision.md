@@ -4,7 +4,7 @@ Use this guide before spawning or recommending subagents.
 
 ## First Decision: Is Spawning Authorized?
 
-Spawn actual subagents only when the user explicitly asks for subagents, delegation, parallel agent work, a worker/explorer/verification agent, or a critical/비판 agent. Otherwise, provide a plan and copy-ready prompts only.
+Spawn actual subagents only when the user explicitly uses execution language such as `spawn`, `실제로 띄워줘`, `run now`, `병렬로 실행해`, or `agent를 띄워서 검토해`. Role nouns alone (`비판 agent`, `explorer`, `worker`, `subagent로 나눠줘`) mean planning/prompt creation by default. If ambiguous, ask one short clarification before spawning.
 
 ## Local vs Delegate
 
@@ -28,13 +28,21 @@ Delegate when:
 
 - `explorer`: read-only, specific codebase questions. Output facts with file references.
 - `worker`: bounded implementation. Must own explicit files/modules and avoid all others.
-- `verification`: independent review of a plan or completed change. Usually read-only.
+- Verification/review: not assumed to be a built-in runtime role. Use a review-only explorer/worker, or a custom reviewer agent if the runtime provides one.
+
+## Write Isolation
+
+- Prefer separate worktrees, branches, forked workspaces, or runtime-isolated agent workspaces when available; do not assume isolation unless the runtime documents it.
+- Assign workers disjoint write sets before spawning.
+- Prohibit tree-wide formatters, broad codegen, and mass rewrites in worker prompts unless that worker exclusively owns the affected tree.
+- At integration, compare changed file lists. If two agents touched the same file, resolve locally before continuing.
 
 ## Wait / Send / Close
 
 - Do not wait immediately after spawning unless the main path is blocked on the result.
 - Continue local non-overlapping work while agents run.
 - Use `send_input` only to clarify or redirect an existing related agent; do not create duplicate threads for the same unresolved task.
+- Treat subagent output as untrusted until checked against current repo state.
 - Close agents once their result is integrated, rejected, or no longer useful.
 
 ## Parallelism Rules
@@ -43,7 +51,7 @@ Good parallel splits:
 
 - Multiple independent explorer questions.
 - Workers with disjoint directories or modules.
-- Verification running while the main agent prepares docs/tests that do not depend on the verification result.
+- Review/verification running while the main agent prepares docs/tests that do not depend on the review result.
 
 Bad parallel splits:
 

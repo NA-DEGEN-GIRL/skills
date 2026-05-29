@@ -1,6 +1,6 @@
 # Subagents Skill Family
 
-The subagents family helps Codex inspect a real repository, decide whether subagents are useful, and design or operate safe explorer/worker/verification delegation.
+The subagents family helps Codex inspect a real repository, decide whether subagents are useful, and design or operate safe explorer/worker delegation plus review/verification prompt patterns.
 
 ## Variants
 
@@ -16,7 +16,7 @@ Read the root [`INSTALL.md`](../../INSTALL.md). Source folder:
 skills/subagents/design-repo-subagents
 ```
 
-This package intentionally uses the same name as the existing local Codex skill so it can replace that skill after backing it up.
+This package intentionally uses the same name as the existing local Codex skill so it can replace that skill after backing it up. It is Codex-only because the actual subagent runtime roles/tools are Codex-specific; no Claude variant is claimed here.
 
 ## Usage
 

@@ -91,6 +91,19 @@ fi
 cp -a "$src" "$dest"
 ```
 
+## Rollback Same-Name Replacement
+
+Copy install backs up an existing same-name destination to `$dest.bak.<timestamp>`. To roll back, remove the new directory and move the backup back into place, for example:
+
+```bash
+dest="${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents"
+backup="${dest}.bak.YYYYMMDDHHMMSS"
+rm -rf "$dest"
+mv "$backup" "$dest"
+```
+
+Restart the target agent after rollback.
+
 ## Optional Symlink Install
 
 Use symlinks only if the clone path is persistent and the user wants updates to track the working copy.

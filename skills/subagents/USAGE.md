@@ -24,7 +24,7 @@ Use this when you want Codex to spawn agents if the environment supports it.
 
 ```text
 use design-repo-subagents
-비판 agent와 explorer agent를 병렬로 써서 이 변경 계획을 검토해줘. 로컬 critical path는 네가 유지해.
+비판/review agent와 explorer agent를 실제로 띄워서 병렬로 이 변경 계획을 검토해줘. 로컬 critical path는 네가 유지해.
 ```
 
 Expected behavior:
@@ -47,12 +47,12 @@ use design-repo-subagents
 
 ```text
 use design-repo-subagents
-현재 패치를 독립 검증할 비판/verification agent 프롬프트를 만들어줘. 가능하면 실제 verification agent도 띄워줘.
+현재 패치를 독립 검증할 비판/review 프롬프트를 만들어줘. 실제로 띄울 수 있으면 review-only explorer나 worker를 띄워줘.
 ```
 
 ## Good Prompt Hints
 
-- Say whether you want planning only or actual spawning.
+- Say whether you want planning only or actual spawning. Role nouns alone default to planning.
 - Mention known target files or modules if you already know them.
 - Ask for a critical/비판 agent when you want independent review, not implementation.
 - For worker agents, require disjoint file ownership.

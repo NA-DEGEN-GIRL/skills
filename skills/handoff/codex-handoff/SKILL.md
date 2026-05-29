@@ -5,7 +5,7 @@ description: Codex-specific workflow for saving and resuming compact repo-local 
 
 # Codex Handoff
 
-**Skill Version:** 0.1.2
+**Skill Version:** 0.1.3
 
 Use this Codex-specific skill to standardize a low-noise `save -> /clear -> resume` workflow. The work snapshot lives in the target repo at `.handoff/latest.md` plus dated backups. This skill folder can be copied or linked into `~/.codex/skills/`, but it does not require patching any installed default `handoff` skill.
 
@@ -121,7 +121,7 @@ Write `.handoff/latest.md` using this format. Omit any section with no content; 
 
 ## Metadata
 - Schema Version: handoff-v1
-- Skill Version: 0.1.2
+- Skill Version: 0.1.3
 - Skill Variant: codex-handoff
 - Created at: YYYY-MM-DDTHH:MM:SSZ
 - Repo root:

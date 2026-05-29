@@ -39,6 +39,43 @@ def parse_frontmatter(text: str) -> tuple[dict[str, str], list[str]]:
     return data, errors
 
 
+OPENAI_STRING_RE = re.compile(r'^  (display_name|short_description|default_prompt): "([^"]+)"$')
+
+
+def validate_openai_yaml(path: Path, skill_name: str) -> list[str]:
+    errors: list[str] = []
+    meta = path / "agents" / "openai.yaml"
+    if not meta.exists():
+        return errors
+    lines = meta.read_text(encoding="utf-8").splitlines()
+    content = [line for line in lines if line.strip() and not line.lstrip().startswith("#")]
+    if not content:
+        return ["agents/openai.yaml is empty"]
+    if content[0] != "interface:":
+        errors.append("agents/openai.yaml must use top-level `interface:`")
+    found: dict[str, str] = {}
+    for line in content[1:]:
+        match = OPENAI_STRING_RE.match(line)
+        if match:
+            found[match.group(1)] = match.group(2)
+        elif re.match(r"^[A-Za-z_]+:", line):
+            errors.append("agents/openai.yaml interface fields must be nested under `interface:`")
+        elif ":" in line and not line.startswith("  "):
+            errors.append(f"agents/openai.yaml unexpected top-level line `{line}`")
+        elif ":" in line and not re.search(r': "[^"]+"$', line):
+            errors.append(f"agents/openai.yaml string values must be quoted: `{line}`")
+    for key in ("display_name", "short_description", "default_prompt"):
+        if key not in found:
+            errors.append(f"agents/openai.yaml missing interface.{key}")
+    short = found.get("short_description", "")
+    if short and not (25 <= len(short) <= 64):
+        errors.append("agents/openai.yaml interface.short_description must be 25-64 characters")
+    prompt = found.get("default_prompt", "")
+    if prompt and f"${skill_name}" not in prompt:
+        errors.append(f"agents/openai.yaml interface.default_prompt must mention `${skill_name}`")
+    return errors
+
+
 def validate_skill(path: Path) -> list[str]:
     errors: list[str] = []
     skill_md = path / "SKILL.md"
@@ -58,6 +95,8 @@ def validate_skill(path: Path) -> list[str]:
     desc = data.get("description", "")
     if desc and len(desc) < 40:
         errors.append("description is too short to be useful")
+    if name:
+        errors.extend(validate_openai_yaml(path, name))
     if "[TODO" in text or "TODO:" in text:
         errors.append("SKILL.md contains TODO placeholder text")
     if "name" in data and "description" in data and set(data) - set(REQUIRED_KEYS):

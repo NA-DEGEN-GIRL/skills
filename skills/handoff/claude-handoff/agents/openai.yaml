@@ -1,4 +1,5 @@
 # Skill-creator UI metadata convention. This filename is not an OpenAI-only claim.
-display_name: Claude Handoff
-short_description: Save and resume Claude handoff snapshots.
-default_prompt: Create or resume a compact repo-local handoff snapshot for Claude Code using .handoff/latest.md.
+interface:
+  display_name: "Claude Handoff"
+  short_description: "Save and resume Claude handoff snapshots"
+  default_prompt: "Use $claude-handoff to create or resume a compact repo-local handoff snapshot."

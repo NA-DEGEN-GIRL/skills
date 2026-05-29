@@ -10,7 +10,7 @@ Current included families:
 - `skills/handoff/claude-handoff` — Claude Code-specific handoff package.
 - `skills/subagents/design-repo-subagents` — Codex-specific subagent planning/operation package.
 
-The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.2`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation.
+The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.3`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation.
 
 ## Read Order
 
