@@ -5,13 +5,18 @@ description: Codex-specific workflow for saving and resuming compact repo-local 
 
 # Codex Handoff
 
-**Skill Version:** 0.1.1
+**Skill Version:** 0.1.2
 
 Use this Codex-specific skill to standardize a low-noise `save -> /clear -> resume` workflow. The work snapshot lives in the target repo at `.handoff/latest.md` plus dated backups. This skill folder can be copied or linked into `~/.codex/skills/`, but it does not require patching any installed default `handoff` skill.
 
 ## Primary Use
 
 Primary use: same-agent context hygiene. Use this skill periodically before `/clear` or a fresh session in the same agent so the next session can resume from `.handoff/latest.md` without carrying polluted chat context. Cross-agent transfer is supported only as an optional secondary workflow when the other agent has a compatible handoff skill installed.
+
+
+## Response Language
+
+Default final user-facing responses after Save Mode or Resume Mode should be in Korean, because this workflow is primarily used by a Korean-speaking user. Keep code, commands, file paths, log excerpts, schema field names, and exact error text in their original language. If the current user explicitly requests another language, follow the user's request. Snapshot headings may stay in the stable English schema format for cross-agent compatibility, but the final chat summary should be Korean by default.
 
 ## Guarantees And Limits
 
@@ -116,7 +121,7 @@ Write `.handoff/latest.md` using this format. Omit any section with no content; 
 
 ## Metadata
 - Schema Version: handoff-v1
-- Skill Version: 0.1.1
+- Skill Version: 0.1.2
 - Skill Variant: codex-handoff
 - Created at: YYYY-MM-DDTHH:MM:SSZ
 - Repo root:

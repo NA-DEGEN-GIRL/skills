@@ -9,7 +9,7 @@ Current included family:
 - `skills/handoff/codex-handoff` — Codex-specific handoff package.
 - `skills/handoff/claude-handoff` — Claude Code-specific handoff package.
 
-The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.1`. For handoff, the primary intended use is same-agent context hygiene: save before `/clear`, resume in a fresh session of the same LLM, and optionally transfer across agents.
+The user asked to keep these local, agent-specific, and not patch installed global skills. The current version is `0.1.2`. For handoff, the primary intended use is same-agent context hygiene: save before `/clear`, resume in a fresh session of the same LLM, and optionally transfer across agents.
 
 ## Read Order
 

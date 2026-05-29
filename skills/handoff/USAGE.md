@@ -19,6 +19,10 @@ Generated files live in the target project:
 .handoff/YYYY-MM-DD-HHMMSS-claude.md
 ```
 
+## Response Language
+
+The installed handoff skills default to Korean for final user-facing Save/Resume reports. They still preserve code, commands, paths, schema labels, and exact errors in their original language. If you want another language for a specific run, say so explicitly.
+
 ## Periodic Same-Agent Cleanup
 
 Use this every time the chat gets long, noisy, or likely to confuse the model.

@@ -6,7 +6,7 @@ This directory contains installable skill packages grouped by skill family.
 
 | Family | Purpose | Variants | Version | Docs |
 |---|---|---|---|---|
-| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.1` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
+| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.2` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
 
 ## Layout Convention
 
