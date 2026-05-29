@@ -9,8 +9,9 @@ Current included families:
 - `skills/handoff/codex-handoff` — Codex-specific handoff package.
 - `skills/handoff/claude-handoff` — Claude Code-specific handoff package.
 - `skills/subagents/design-repo-subagents` — Codex-specific subagent planning/operation package.
+- `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 
-The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.3`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation.
+The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.4`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review.
 
 ## Read Order
 
@@ -18,11 +19,12 @@ The user asked to keep these local, agent-specific, and not patch installed glob
 2. `skills/README.md` — family/package index and layout rules.
 3. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
 4. `skills/subagents/USAGE.md` — subagent planning/spawn examples.
-5. `README.md` — human/LLM overview, installation, routing caveats.
-6. `AGENTS.md` — concise repo-local rules for coding agents.
-7. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
-8. Package runtime scripts under `skills/<family>/<skill-name>/scripts/`.
-9. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
+5. `skills/repo-instructions/USAGE.md` — AGENTS.md drafting/review examples.
+6. `README.md` — human/LLM overview, installation, routing caveats.
+7. `AGENTS.md` — concise repo-local rules for coding agents.
+8. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
+9. Package runtime scripts under `skills/<family>/<skill-name>/scripts/`.
+10. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
 
 ## Layout Rules
 
@@ -51,6 +53,13 @@ The handoff package narrows the gap between prose promises and code:
 - It is Codex-specific because actual subagent tools and roles are Codex-oriented.
 - It should recommend actual spawning only when the user explicitly asks for subagents, delegation, parallel work, or critical/비판 agents.
 - It should otherwise produce copy-ready prompts and a coordination plan.
+
+## Repo Instructions Notes
+
+- `write-agents-md` intentionally keeps the existing installed skill name so copy install can replace it after timestamp backup.
+- It should preserve user-authored instructions and avoid unsupported command claims.
+- It should treat existing docs as inputs to verify, not as automatically authoritative facts.
+- It should default to root `AGENTS.md` unless nested scope is clearly justified.
 
 ## Still True Limitations
 

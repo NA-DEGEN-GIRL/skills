@@ -2,11 +2,11 @@
 
 This repository stores portable, agent-installable skill packages grouped by skill family. It is intended to grow beyond the current handoff skills without changing the install contract for existing packages.
 
-Current repository version: `0.1.3`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.4`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Humans/users:** browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md) or [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md).
+**Humans/users:** browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), or [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md).
 
 ## Contents
 
@@ -27,10 +27,14 @@ useful-skills/
         ├── scripts/         # family-level maintenance checks
         ├── codex-handoff/  # installable Codex skill package
         └── claude-handoff/ # installable Claude Code skill package
-    └── subagents/
+    ├── subagents/
         ├── README.md       # family overview
         ├── USAGE.md        # examples for planning/spawning
         └── design-repo-subagents/ # installable Codex skill package
+    └── repo-instructions/
+        ├── README.md       # family overview
+        ├── USAGE.md        # examples for AGENTS.md workflows
+        └── write-agents-md/ # installable Codex skill package
 ```
 
 ## Layout Contract
@@ -73,6 +77,12 @@ These packages are intentionally **agent-specific**. They share a file format, b
 The subagents family helps Codex inspect a repository and decide how to use explorer, worker, and verification subagents safely. The installable package is `skills/subagents/design-repo-subagents/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
 
 Primary workflow: repo-grounded delegation planning. Actual spawning is recommended only when the user explicitly asks for subagents, delegation, parallel agent work, or a critical/비판 agent.
+
+### Repo Instructions
+
+The repo-instructions family helps Codex draft, review, and maintain `AGENTS.md` from actual repo facts. The installable package is `skills/repo-instructions/write-agents-md/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
+
+Primary workflow: inspect repo files, preserve user-authored instructions, include only verified or explicitly marked-unverified commands, and keep the resulting `AGENTS.md` compact and operational.
 
 ## What Handoff Enforces By Code
 
@@ -118,4 +128,5 @@ This runs the repo-local portable skill validator, the external Codex validator 
 skills/handoff/codex-handoff/SKILL.md
 skills/handoff/claude-handoff/SKILL.md
 skills/subagents/design-repo-subagents/SKILL.md
+skills/repo-instructions/write-agents-md/SKILL.md
 ```
