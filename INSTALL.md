@@ -16,6 +16,8 @@ This is the stable LLM-first entrypoint. The repository may contain multiple ski
 | handoff | Claude Code | `skills/handoff/claude-handoff/` | `$HOME/.claude/skills/claude-handoff` |
 | subagents | Codex | `skills/subagents/design-repo-subagents/` | `${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents` |
 | repo-instructions | Codex | `skills/repo-instructions/write-agents-md/` | `${CODEX_HOME:-$HOME/.codex}/skills/write-agents-md` |
+| repo-orientation | Codex | `skills/repo-orientation/orient-repo/` | `${CODEX_HOME:-$HOME/.codex}/skills/orient-repo` |
+| repo-orientation | Claude Code | `skills/repo-orientation/orient-repo/` | `$HOME/.claude/skills/orient-repo` |
 
 Do **not** replace existing default `handoff` skills unless the user explicitly asks for replacement. Install the current handoff packages as separate `codex-handoff` / `claude-handoff` skills by default. The subagents and repo-instructions packages intentionally use existing skill names; back up any same-name destination before replacing it.
 
@@ -45,6 +47,7 @@ make all
    - Both + handoff: install both.
    - Codex + subagents: install `design-repo-subagents`.
    - Codex + repo-instructions: install `write-agents-md`.
+   - Codex and/or Claude Code + repo-orientation: install `orient-repo` (same source folder) to each chosen agent's skill home; it is agent-neutral.
 4. If the target agent is unclear, ask one short question: `Codex용, Claude용, 둘 다 중 무엇을 설치할까요?`
 
 ## Safe Copy Install Commands
@@ -107,6 +110,34 @@ fi
 cp -a "$src" "$dest"
 ```
 
+### Codex repo-orientation
+
+```bash
+src="$PWD/skills/repo-orientation/orient-repo"
+dest="${CODEX_HOME:-$HOME/.codex}/skills/orient-repo"
+mkdir -p "$(dirname "$dest")"
+if [ -L "$dest" ]; then
+  rm "$dest"
+elif [ -e "$dest" ]; then
+  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
+fi
+cp -a "$src" "$dest"
+```
+
+### Claude Code repo-orientation
+
+```bash
+src="$PWD/skills/repo-orientation/orient-repo"
+dest="$HOME/.claude/skills/orient-repo"
+mkdir -p "$(dirname "$dest")"
+if [ -L "$dest" ]; then
+  rm "$dest"
+elif [ -e "$dest" ]; then
+  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
+fi
+cp -a "$src" "$dest"
+```
+
 ## Rollback Same-Name Replacement
 
 Copy install backs up an existing same-name destination to `$dest.bak.<timestamp>`. To roll back, remove the new directory and move the backup back into place, for example:
@@ -140,6 +171,14 @@ ln -sfn "$PWD/skills/subagents/design-repo-subagents" "${CODEX_HOME:-$HOME/.code
 # Codex repo-instructions
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
 ln -sfn "$PWD/skills/repo-instructions/write-agents-md" "${CODEX_HOME:-$HOME/.codex}/skills/write-agents-md"
+
+# Codex repo-orientation
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+ln -sfn "$PWD/skills/repo-orientation/orient-repo" "${CODEX_HOME:-$HOME/.codex}/skills/orient-repo"
+
+# Claude Code repo-orientation
+mkdir -p "$HOME/.claude/skills"
+ln -sfn "$PWD/skills/repo-orientation/orient-repo" "$HOME/.claude/skills/orient-repo"
 ```
 
 ## Generic Rule For Future Packages

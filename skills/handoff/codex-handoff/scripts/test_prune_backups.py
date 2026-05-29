@@ -71,11 +71,79 @@ def test_symlink_file_skipped() -> None:
         check(target.exists(), "symlink target should not be deleted")
 
 
+def test_prune_scope_isolated() -> None:
+    """--scope prunes only the named lane and leaves the default lane untouched."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        handoff = root / ".handoff"
+        handoff.mkdir()
+        # default lane: 25 backups that must NOT be touched by a scoped prune
+        create_backups(handoff, "codex")
+        scope_dir = handoff / "scopes" / "auth-refactor"
+        scope_dir.mkdir(parents=True)
+        create_backups(scope_dir, "codex")
+        run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--scope", "auth-refactor", "--agent", "codex", "--keep", "20"])
+        scope_remaining = sorted(p.name for p in scope_dir.glob("2026-05-28-*-codex.md"))
+        check(len(scope_remaining) == 20, "scoped lane should be pruned to 20")
+        check((scope_dir / "latest.md").exists(), "scoped latest.md should be protected")
+        default_remaining = list(handoff.glob("2026-05-28-*-codex.md"))
+        check(len(default_remaining) == 25, "default lane must be untouched by --scope")
+
+
+def test_all_lanes() -> None:
+    """--all-lanes prunes the default lane plus every scoped lane, per lane."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        handoff = root / ".handoff"
+        handoff.mkdir()
+        create_backups(handoff, "codex")
+        for scope in ("auth-refactor", "ui"):
+            d = handoff / "scopes" / scope
+            d.mkdir(parents=True)
+            create_backups(d, "codex")
+        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--all-lanes", "--agent", "codex", "--keep", "20"])
+        check("== Lane:" in result.stdout, "all-lanes should print per-lane headers")
+        check(len(list(handoff.glob("2026-05-28-*-codex.md"))) == 20, "default lane should be pruned to 20")
+        for scope in ("auth-refactor", "ui"):
+            d = handoff / "scopes" / scope
+            check(len(list(d.glob("2026-05-28-*-codex.md"))) == 20, f"scoped lane {scope} should be pruned to 20")
+            check((d / "latest.md").exists(), f"scoped latest.md for {scope} should be protected")
+
+
+def test_symlink_scopes_root_skipped() -> None:
+    """A symlinked .handoff/scopes directory is skipped, not traversed."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        handoff = root / ".handoff"
+        handoff.mkdir()
+        outside = root / "outside-scopes"
+        outside.mkdir()
+        (handoff / "scopes").symlink_to(outside, target_is_directory=True)
+        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--scope", "auth", "--agent", "codex"])
+        check("skipping symlinked scopes directory" in result.stdout, "symlinked scopes root should be skipped under --scope")
+        all_lanes = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--all-lanes", "--agent", "codex"])
+        check("skipping symlinked scopes directory" in all_lanes.stdout, "symlinked scopes root should be skipped under --all-lanes")
+
+
+def test_invalid_scope_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        handoff = root / ".handoff"
+        handoff.mkdir()
+        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--scope", "../evil", "--agent", "codex"], check_result=False)
+        check(result.returncode == 2, "path-traversal scope should be rejected")
+        check("Invalid scope" in result.stderr, "invalid scope message missing")
+
+
 def main() -> int:
     test_prune_agent("codex")
     test_prune_agent("claude")
     test_symlink_dir_rejected()
     test_symlink_file_skipped()
+    test_prune_scope_isolated()
+    test_all_lanes()
+    test_symlink_scopes_root_skipped()
+    test_invalid_scope_rejected()
     print("prune_backups.py smoke tests passed")
     return 0
 

@@ -133,6 +133,41 @@ use claude-handoff
 
 The reverse also works: Claude saves with `claude-handoff`, Codex resumes with `codex-handoff`.
 
+## Scoped Lanes (parallel work)
+
+When several agents work the same repo in parallel on different task-groups, give each a named **scope** so focused contexts are saved and resumed independently instead of clobbering one shared `.handoff/latest.md`. Scope is an explicit lowercase-kebab slug (`^[a-z0-9][a-z0-9-]*$`); the skill never infers it. Omitting a scope keeps the default-lane behavior.
+
+Save a scoped lane:
+
+```text
+use codex-handoff
+auth-refactor 작업만 scope로 handoff 저장해줘. (.handoff/scopes/auth-refactor/ 에 저장)
+```
+
+Resume a specific lane:
+
+```text
+use claude-handoff
+auth-refactor scope handoff 이어받아. 다른 lane은 건드리지 말고 그 lane만 검증해서 이어줘.
+```
+
+Resume without naming a scope, when multiple lanes exist:
+
+```text
+use codex-handoff
+이어받아.
+```
+
+The skill lists existing lanes (default plus each `.handoff/scopes/*/`) and asks which to resume — it does not guess. Layout:
+
+```text
+.handoff/latest.md                                  # default lane
+.handoff/scopes/auth-refactor/latest.md             # scoped lane
+.handoff/scopes/auth-refactor/YYYY-MM-DD-HHMMSS-codex.md
+```
+
+There is no lock in v1; keep one writer per scope.
+
 ## Optional: Add Repo Rule
 
 Only do this when you want the repo itself to remember the workflow.
@@ -177,6 +212,10 @@ python3 ~/.codex/skills/codex-handoff/scripts/validate_snapshot.py .handoff/late
 ```bash
 python3 ~/.codex/skills/codex-handoff/scripts/prune_backups.py --root . --dir .handoff --agent codex --keep 20
 python3 ~/.claude/skills/claude-handoff/scripts/prune_backups.py --root . --dir .handoff --agent claude --keep 20
+
+# one scoped lane, or every lane (default + scopes) at once:
+python3 ~/.codex/skills/codex-handoff/scripts/prune_backups.py --root . --dir .handoff --scope auth-refactor --agent codex --keep 20
+python3 ~/.codex/skills/codex-handoff/scripts/prune_backups.py --root . --dir .handoff --all-lanes --agent codex --keep 20
 ```
 
 ## Good Prompts

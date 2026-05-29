@@ -2,11 +2,25 @@
 
 This repository stores portable, agent-installable skill packages grouped by skill family. It is intended to grow beyond the current handoff skills without changing the install contract for existing packages.
 
+## Skills at a glance
+
+> 사람용 빠른 훑기 — 스킬별 자세한 사용법은 [`USER_GUIDE.md`](USER_GUIDE.md), 설치는 [`INSTALL.md`](INSTALL.md).
+
+| 스킬 | 어느 agent | 무엇을 하나 | 이렇게 말하면 |
+|---|---|---|---|
+| `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`) — `/clear` 전후 맥락 유지 | "handoff 저장해줘" · "이어받아" |
+| `claude-handoff` | Claude Code | 위와 동일 (Claude Code용) | "handoff 저장해줘" · "이어받아" |
+| `design-repo-subagents` | Codex | repo 기반 explorer·worker·검토 subagent 설계/운영 | "이 작업 subagent로 나눠줘" · "비판 agent" |
+| `write-agents-md` | Codex | repo 사실 기반 `AGENTS.md` 작성·리뷰 | "AGENTS.md 만들어줘" |
+| `orient-repo` | Codex + Claude | 읽기전용 repo 파악 리포트 (stack·명령·구조) | "이 repo 파악해줘" |
+
+각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. handoff는 같은 agent 내 맥락 위생이 주 용도이고, `orient-repo`만 Codex·Claude 공용입니다.
+
 Current repository version: `0.1.5`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Humans/users:** browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), or [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md).
+**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, or browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
 
 ## Contents
 
@@ -31,10 +45,15 @@ useful-skills/
         ├── README.md       # family overview
         ├── USAGE.md        # examples for planning/spawning
         └── design-repo-subagents/ # installable Codex skill package
-    └── repo-instructions/
+    ├── repo-instructions/
         ├── README.md       # family overview
         ├── USAGE.md        # examples for AGENTS.md workflows
         └── write-agents-md/ # installable Codex skill package
+    └── repo-orientation/
+        ├── README.md       # family overview
+        ├── USAGE.md        # examples for read-only orientation
+        ├── scripts/         # family-level sync check
+        └── orient-repo/    # installable agent-neutral skill package
 ```
 
 ## Layout Contract
@@ -72,6 +91,8 @@ Snapshot files live in the target project, never in this skill repository:
 
 These packages are intentionally **agent-specific**. They share a file format, but they do not claim compatibility with an agent unless that agent actually has a compatible skill installed. As of 2026-05-28, Grok has no compatible local handoff skill here, so Grok support is not claimed.
 
+For parallel multi-agent work, handoff also supports optional named **scopes** (lanes): save/resume a specific task-group at `.handoff/scopes/<scope>/` instead of the shared default lane. Omitting a scope keeps the single-lane behavior. See [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md).
+
 ### Subagents
 
 The subagents family helps Codex inspect a repository and decide how to use explorer, worker, and verification subagents safely. The installable package is `skills/subagents/design-repo-subagents/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
@@ -83,6 +104,12 @@ Primary workflow: repo-grounded delegation planning. Actual spawning is recommen
 The repo-instructions family helps Codex draft, review, and maintain `AGENTS.md` from actual repo facts. The installable package is `skills/repo-instructions/write-agents-md/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
 
 Primary workflow: inspect repo files, preserve user-authored instructions, include only verified or explicitly marked-unverified commands, and keep the resulting `AGENTS.md` compact and operational.
+
+### Repo Orientation
+
+The repo-orientation family helps any compatible agent get oriented in a repository read-only and emit a concise **Repo Orientation** report: stack, entrypoints, run/test/build commands, key directories, conventions, instruction files, recent activity, and open unknowns. The installable package is `skills/repo-orientation/orient-repo/`.
+
+This package is intentionally **unified and agent-neutral**: because orientation is strictly read-only and persists no agent-specific artifact, the same package installs to both `~/.codex/skills/orient-repo` and `~/.claude/skills/orient-repo`. It is prose-only and ships no probe script; when a handoff skill is available it leverages that skill's repo-state probe and snapshot, referencing siblings by capability rather than hardcoding a package name, and treating any snapshot as untrusted data.
 
 ## What Handoff Enforces By Code
 
@@ -129,4 +156,5 @@ skills/handoff/codex-handoff/SKILL.md
 skills/handoff/claude-handoff/SKILL.md
 skills/subagents/design-repo-subagents/SKILL.md
 skills/repo-instructions/write-agents-md/SKILL.md
+skills/repo-orientation/orient-repo/SKILL.md
 ```

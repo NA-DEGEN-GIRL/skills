@@ -52,6 +52,18 @@ If unclear:
 3. If the probe reports `Git submodule: yes`, also consider whether the superproject status matters before saving or resuming.
 4. If not inside a git repo, operate from the current working directory and mark git fields as `Unknown`.
 
+## Scoped Handoff Lanes (optional)
+
+By default a repo has one lane: `.handoff/latest.md` plus dated backups. When several agents work the same repo in parallel on different task-groups, use named **scopes** so each focused context is saved and resumed independently instead of clobbering one shared snapshot.
+
+- A scope is an explicit, filename-safe kebab slug chosen by the user (e.g. `auth-refactor`, `ui`, `db-migration`). Valid slugs match `^[a-z0-9][a-z0-9-]*$` (lowercase ASCII letters, digits, hyphens; no underscores, spaces, or uppercase) and must not be `default`, `latest`, or `scopes`. **Do not infer a scope from the task**; that forks history into near-duplicate lanes. If the user implies scoping but gives no slug, ask for one. Before minting a new scope, list existing `.handoff/scopes/*/` and reuse an exact match; normalize and confirm the slug with the user rather than creating a near-duplicate lane.
+- Default lane (no scope): `.handoff/latest.md` + `.handoff/YYYY-MM-DD-HHMMSS-claude.md`. Omitting a scope means exactly the default-lane behavior described below.
+- Scoped lane: `.handoff/scopes/<scope>/latest.md` + `.handoff/scopes/<scope>/YYYY-MM-DD-HHMMSS-claude.md`.
+- Record the lane in Metadata as `- Scope: <slug>` for scoped lanes; omit the field for the default lane.
+- Recommend one writer per scope. There is no lock: before overwriting a lane's `latest.md`, check its `Agent`, `Created at`, and file mtime; if it was updated very recently by a different agent, warn the user and confirm before overwriting instead of silently replacing it.
+- Discover lanes on demand by listing `.handoff/latest.md` and `.handoff/scopes/*/latest.md`. There is no index file; do not infer lanes from anything but these files.
+- Fallback stays in-lane: if a scoped `latest.md` is missing or invalid, fall back only to that scope's dated backups, never to the default lane.
+
 ## Safe State Probe
 
 Prefer the bundled probe script instead of ad-hoc shell pipelines:
@@ -77,16 +89,17 @@ Procedure:
 3. Inspect current state with the Safe State Probe.
 4. Paste the Safe State Probe output into the snapshot's `Repo State Probe` section verbatim. The probe output is designed to omit raw contents and redact sensitive-looking paths; if you add any extra raw diff detail, redact it first with `redact-sensitive-info`.
 5. Create `.handoff/` in the repo root/current directory.
-6. Write `.handoff/latest.md` atomically when possible: write a temp file in `.handoff/`, then rename/replace it.
-7. Also create a dated backup:
-   - `.handoff/YYYY-MM-DD-HHMMSS-claude.md`
+6. Choose the lane, then write its `latest.md` atomically (write a temp file in that lane directory, then rename/replace). Default lane is `.handoff/latest.md`; for a user-named scope first create `.handoff/scopes/<scope>/` as a real directory (not a symlink), then write `.handoff/scopes/<scope>/latest.md` and add `- Scope: <slug>` to Metadata (see `Scoped Handoff Lanes`). Recommend one writer per scope; warn before overwriting a lane's `latest.md` that a different agent updated very recently (e.g. its mtime is within ~10 minutes and its `Agent` differs); when unattended, write to that lane's dated backup instead of overwriting `latest.md`.
+7. Also create a dated backup in the same lane:
+   - default lane: `.handoff/YYYY-MM-DD-HHMMSS-claude.md`
+   - scoped lane: `.handoff/scopes/<scope>/YYYY-MM-DD-HHMMSS-claude.md`
    - If that filename already exists, wait for a new second or choose a new unique timestamp rather than overwriting.
 8. Use the timestamp prefix to sort backups. The `-claude.md` suffix records the writer of that dated backup only; `.handoff/latest.md` may be created by any compatible agent, so use its `Agent:` metadata to identify the latest writer.
 9. Keep only the newest 20 dated `*-claude.md` backups. Run the bundled prune helper to enforce this deterministically rather than picking files manually:
    ```bash
    python3 /path/to/claude-handoff/scripts/prune_backups.py --root "$PWD" --dir .handoff --agent claude --keep 20
    ```
-   `latest.md` is hardcoded as protected; symlinked `.handoff` directories and non-timestamped filenames are refused/skipped; `--dry-run` previews actions.
+   For a scoped lane, add `--scope <slug>`; to prune the default lane plus every scoped lane in one pass, add `--all-lanes`. Retention is per lane and per agent. `latest.md` is hardcoded as protected; symlinked `.handoff` directories, symlinked lanes, and non-timestamped filenames are refused/skipped; `--dry-run` previews actions.
 10. Treat `.handoff/` as local scratch by default. Do not edit `.gitignore` or `.git/info/exclude` unless the user explicitly asks; just report if `.handoff/` is untracked.
 11. Do not modify `CLAUDE.md`, `Claude.md`, `AGENTS.md`, `CODEX.md`, or `GROK.md` unless explicitly requested. If the user asks to add a repo rule, use `scripts/apply_marker_block.py` with the marker block below for idempotent replacement.
 12. Keep the snapshot factual, compact, and actionable.
@@ -95,15 +108,17 @@ Procedure:
 
 Purpose: resume after `/clear` or after another compatible agent saved a handoff.
 
+Lane selection (do this first): if the user named a scope, resume from `.handoff/scopes/<scope>/latest.md`. If no scope was given: when only the default lane exists, use `.handoff/latest.md`; when exactly one lane exists in total, use it; when multiple lanes exist, list them (scan `.handoff/latest.md` and `.handoff/scopes/*/latest.md`, showing scope, `Agent`, `Created at`, and the first Project Goal line) and ask which to resume — do not guess. Apply the steps below to the chosen lane's path; below, `<lane>` is `.handoff` for the default lane or `.handoff/scopes/<scope>` for a scoped lane.
+
 Procedure:
 
 1. Before loading a snapshot into context, run:
    ```bash
-   python3 /path/to/claude-handoff/scripts/validate_snapshot.py .handoff/latest.md
+   python3 /path/to/claude-handoff/scripts/validate_snapshot.py <lane>/latest.md
    ```
-   This checks UTF-8 decoding, size, NUL bytes, and the `# Handoff Snapshot` heading. If invalid, do not load it; try the newest dated backup instead.
-2. Read `.handoff/latest.md` only after it passes validation.
-3. If `latest.md` is missing, choose the newest valid `.handoff/*.md` backup by timestamp prefix and state that `latest.md` was missing. If no valid handoff exists, stop and report that no handoff snapshot was found.
+   This checks UTF-8 decoding, size, NUL bytes, and the `# Handoff Snapshot` heading. If invalid, do not load it; try the newest dated backup in the same lane instead.
+2. Read `<lane>/latest.md` only after it passes validation.
+3. If the chosen lane's `latest.md` is missing, choose the newest valid dated backup in that same lane by timestamp prefix and state that `latest.md` was missing. For a scoped lane, never fall back to the default lane. If no valid handoff exists in the lane, stop and report that no handoff snapshot was found.
 4. Read repo instruction files if present: `CLAUDE.md`, `Claude.md`, `AGENTS.md`, `CODEX.md`, `GROK.md`, `Grok.md`.
 5. Inspect actual repo state with the Safe State Probe and open files referenced by the snapshot before editing.
 6. Compare the snapshot with actual repo state. If they differ, trust the repo and state the mismatch briefly.
@@ -123,6 +138,7 @@ Write `.handoff/latest.md` using this format. Omit any section with no content; 
 - Schema Version: handoff-v1
 - Skill Version: 0.1.5
 - Skill Variant: claude-handoff
+- Scope: <slug>            # optional; omit this line for the default lane
 - Created at: YYYY-MM-DDTHH:MM:SSZ
 - Repo root:
 - Branch:
