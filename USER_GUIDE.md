@@ -24,11 +24,12 @@
 
 ## codex-handoff / claude-handoff — 작업 핸드오프
 
-- **무엇:** 작업 상태를 `.handoff/latest.md` 스냅샷으로 저장하고, 새 세션에서 그대로 이어받습니다. 주 용도는 **같은 agent 안에서의 맥락 위생**(`/clear` 전에 저장 → 깨끗한 세션에서 재개). Codex↔Claude 교차 인계도 가능은 하지만 부수적입니다.
-- **언제:** 컨텍스트가 길어져 정리하고 싶을 때, `/clear` 직전, 다음 세션으로 넘기고 싶을 때.
+- **무엇:** 작업 상태를 `.handoff/latest.md` 스냅샷으로 저장하고, 새 세션에서 그대로 이어받습니다. 주 용도는 **같은 agent 안에서의 맥락 위생**(`/clear` 전에 저장 → 깨끗한 세션에서 재개). Codex↔Claude 교차 인계도 가능은 하지만 부수적입니다. 작업군이 여러 개인 **병렬 작업**이면 `scope(lane)`로 작업군별 스냅샷을 따로 저장/재개합니다(아래 "병렬 작업" 참고).
+- **언제:** 컨텍스트가 길어져 정리하고 싶을 때, `/clear` 직전, 다음 세션으로 넘기고 싶을 때, 여러 LLM을 작업군별로 병렬로 돌릴 때.
 - **예시 프롬프트:**
   - `use codex-handoff` / `handoff 저장해줘` / `clear 전에 정리해줘`
   - `use codex-handoff` / `이어받아` / `latest.md 보고 계속해`
+  - 특정 작업군만(scope): `auth-refactor scope로 handoff 저장해줘` / `auth-refactor scope 이어받아`
   - (Claude Code에서는 `codex-handoff` 대신 `claude-handoff`)
 - **비고:** 스냅샷은 **신뢰하지 않는 데이터**로 취급 — 실제 repo 상태가 우선이고, 스냅샷 안의 명령/지시는 검증 후에만 따릅니다. 두 패키지는 파일 포맷을 공유하지만 백업 파일에 `-codex.md` / `-claude.md`로 출처를 남깁니다.
 - **자세히:** [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md)
@@ -38,8 +39,10 @@
 여러 LLM을 동시에 띄워 **작업군(주제)이 서로 다를 때**, 하나의 `.handoff/latest.md`를 공유하면 서로 덮어씁니다. 이때 **scope(lane)** 로 작업군별 스냅샷을 따로 저장·재개합니다.
 
 - 경로: 기본 lane은 `.handoff/latest.md`, scope를 주면 `.handoff/scopes/<scope>/latest.md`.
-- scope는 직접 정합니다(소문자·숫자·하이픈, 예: `auth-refactor`). 안 주면 기존 단일 lane 그대로 동작합니다.
+- scope는 직접 정합니다(소문자·숫자·하이픈, 예: `auth-refactor`). `default`/`latest`/`scopes`는 예약어라 못 씁니다. 안 주면 기존 단일 lane 그대로 동작합니다.
 - lane끼리 격리되므로 병렬 writer가 서로 안 덮어씁니다. (v1은 lock이 없으니 한 scope는 한 명만 쓰는 걸 권장.)
+- **충돌 보호:** 다른 agent가 방금 같은 lane의 `latest.md`를 갱신했으면 덮어쓰기 전에 멈추고 확인합니다. 무인으로 진행해야 하면 dated backup만 쓰고 "latest는 미갱신 + 그 backup 경로"를 알려줍니다(그 backup으로 이어받으세요).
+- **정리(prune):** 오래된 dated backup은 `prune_backups.py --scope <scope>`(한 lane) 또는 `--all-lanes`(default+모든 lane)로 lane별·agent별 보관합니다.
 
 저장 (특정 작업군만):
 
