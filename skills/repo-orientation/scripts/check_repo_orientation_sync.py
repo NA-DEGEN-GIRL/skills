@@ -44,6 +44,8 @@ def main() -> int:
         "actual repo/git state > validated",
         "if a handoff skill is available",
         "Repo Orientation",
+        "Quality Gate",
+        "repo-bootstrap / init-gate",
         "read-only",
     ]
     missing = [literal for literal in expected_literals if literal not in skill]
@@ -54,7 +56,7 @@ def main() -> int:
         print("OK orient-repo SKILL literals")
 
     checklist = read(PACKAGE / "references/orientation-checklist.md")
-    checklist_literals = ["Unknowns To Surface"]
+    checklist_literals = ["Quality Gate", "Canonical check path", "Unknowns To Surface"]
     missing_checklist = [literal for literal in checklist_literals if literal not in checklist]
     if missing_checklist:
         print(f"CHECKLIST LITERAL MISSING: {missing_checklist}")

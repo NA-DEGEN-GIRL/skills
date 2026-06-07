@@ -6,10 +6,11 @@ This directory contains installable skill packages grouped by skill family.
 
 | Family | Purpose | Variants | Version | Docs |
 |---|---|---|---|---|
-| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.6` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
-| `subagents` | Design and operate repo-specific Codex subagent delegation plans | `design-repo-subagents` | `0.1.6` | [`subagents/README.md`](subagents/README.md), [`subagents/USAGE.md`](subagents/USAGE.md) |
-| `repo-instructions` | Draft/review repo-local AGENTS.md instructions from repo facts | `write-agents-md` | `0.1.6` | [`repo-instructions/README.md`](repo-instructions/README.md), [`repo-instructions/USAGE.md`](repo-instructions/USAGE.md) |
-| `repo-orientation` | Produce a read-only orientation report (stack, entrypoints, commands, layout, prior-session context) for any repo | `orient-repo` | `0.1.6` | [`repo-orientation/README.md`](repo-orientation/README.md), [`repo-orientation/USAGE.md`](repo-orientation/USAGE.md) |
+| `repo-bootstrap` | Bootstrap deterministic, LLM-debuggable repo quality gates before feature work | `codex-init-gate`, `claude-init-gate` | `0.1.7` | [`repo-bootstrap/README.md`](repo-bootstrap/README.md), [`repo-bootstrap/USAGE.md`](repo-bootstrap/USAGE.md) |
+| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.7` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
+| `subagents` | Design and operate repo-specific Codex subagent delegation plans | `design-repo-subagents` | `0.1.7` | [`subagents/README.md`](subagents/README.md), [`subagents/USAGE.md`](subagents/USAGE.md) |
+| `repo-instructions` | Draft/review repo-local AGENTS.md instructions from repo facts | `write-agents-md` | `0.1.7` | [`repo-instructions/README.md`](repo-instructions/README.md), [`repo-instructions/USAGE.md`](repo-instructions/USAGE.md) |
+| `repo-orientation` | Produce a read-only orientation report (stack, entrypoints, commands, layout, prior-session context) for any repo | `orient-repo` | `0.1.7` | [`repo-orientation/README.md`](repo-orientation/README.md), [`repo-orientation/USAGE.md`](repo-orientation/USAGE.md) |
 
 ## Layout Convention
 
@@ -22,6 +23,7 @@ skills/<family>/
 │   ├── SKILL.md
 │   ├── VERSION
 │   ├── agents/openai.yaml
+│   ├── references/
 │   └── scripts/
 └── ...
 ```

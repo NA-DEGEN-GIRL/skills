@@ -12,6 +12,8 @@
 
 | 스킬 | 어느 agent | 무엇을 하나 |
 |---|---|---|
+| `codex-init-gate` | Codex | LLM-debuggable check-only `make check` 품질 게이트 설치 |
+| `claude-init-gate` | Claude Code | 위와 동일 (Claude Code용) |
 | `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`); 병렬 작업은 scope별 lane |
 | `claude-handoff` | Claude Code | 위와 동일 (Claude Code용) |
 | `design-repo-subagents` | Codex | repo 기반 subagent 설계/운영 |
@@ -21,6 +23,17 @@
 `orient-repo`만 Codex·Claude 공용이고 나머지는 위 표의 agent용입니다.
 
 ---
+
+## codex-init-gate / claude-init-gate — repo 품질 게이트 초기화
+
+- **무엇:** feature work 전에 명령 본문을 검토한 뒤 `fmt`/`lint`/`typecheck`/`test`를 check-only `make check` 또는 기존 runner에 매핑하고, LLM이 수정·디버깅하기 쉬운 구조 원칙(작은 파일/함수, 명확한 boundary, 재현 가능한 테스트)을 점검하며, 필요하면 pre-commit/CI까지 승인 후 연결합니다. 이것은 **품질 게이트 bootstrap**이지 일반 `git init` 대체품은 아닙니다.
+- **언제:** 새 repo를 막 시작했을 때, 새 language/stack을 추가했을 때, 기존 repo의 gate를 점검하거나 보강하고 싶을 때.
+- **예시 프롬프트:**
+  - `use codex-init-gate` / `이 repo에 품질 게이트 깔아줘. 언어는 Python이야.`
+  - `use claude-init-gate` / `make check가 fmt/lint/typecheck/test를 제대로 강제하는지 점검만 해줘.`
+  - `기존 TS repo에 Rust crate를 추가했어. Rust 쪽 gate만 추가해줘.`
+- **비고:** 기본 흐름은 inspect → command review → plan → approval → apply → reviewed canonical check. tool install, `.git` 변경, 기존 config overwrite, CI 추가는 명시 승인이 필요합니다. `fmt`는 수정하지 않는 check-only여야 하며, LLM-friendly 구조 규칙은 도구가 안전하게 지원하는 항목만 fail로 연결하고 나머지는 advisory로 보고합니다.
+- **자세히:** [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md)
 
 ## codex-handoff / claude-handoff — 작업 핸드오프
 

@@ -24,6 +24,13 @@ Use this checklist to ground a read-only repo orientation in actual facts. Inspe
 - Install, run/dev, test, lint, typecheck, build commands.
 - For each, note whether it is **documented** (instruction files, README, manifest scripts, CI) or **inferred** — mark inferred ones `(unverified)`.
 
+## Quality Gate
+
+- Canonical check path if present: `make check`, `just check`, `task check`, package scripts, or documented equivalent.
+- Formatting/lint/typecheck/test targets and whether they share one runner surface or diverge.
+- Hook manager or pre-commit config, CI workflows, and whether they call the same gate path.
+- Repo-bootstrap/init-gate markers or references; report gaps read-only and defer changes to a bootstrap skill.
+
 ## Layout
 
 - Source, test, config, and docs directories.

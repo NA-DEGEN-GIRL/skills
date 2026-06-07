@@ -8,19 +8,21 @@ This repository stores portable, agent-installable skill packages grouped by ski
 
 | 스킬 | 어느 agent | 무엇을 하나 | 이렇게 말하면 |
 |---|---|---|---|
+| `codex-init-gate` | Codex | LLM-debuggable check-only `make check` 품질 게이트 설치 | "게이트 깔아줘" · "scaffold checks" |
+| `claude-init-gate` | Claude Code | 위와 동일 (Claude Code용) | "게이트 깔아줘" · "scaffold checks" |
 | `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`) — `/clear` 전후 맥락 유지 | "handoff 저장해줘" · "이어받아" |
 | `claude-handoff` | Claude Code | 위와 동일 (Claude Code용) | "handoff 저장해줘" · "이어받아" |
 | `design-repo-subagents` | Codex | repo 기반 explorer·worker·검토 subagent 설계/운영 | "이 작업 subagent로 나눠줘" · "비판 agent" |
 | `write-agents-md` | Codex | repo 사실 기반 `AGENTS.md` 작성·리뷰 | "AGENTS.md 만들어줘" |
 | `orient-repo` | Codex + Claude | 읽기전용 repo 파악 리포트 (stack·명령·구조) | "이 repo 파악해줘" |
 
-각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. handoff는 같은 agent 내 맥락 위생이 주 용도이고, `orient-repo`만 Codex·Claude 공용입니다.
+각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이고, `handoff`는 같은 agent 내 맥락 위생이 주 용도이며, `orient-repo`만 Codex·Claude 공용입니다.
 
-Current repository version: `0.1.6`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.7`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, or browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
+**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, or browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md), [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
 
 ## Contents
 
@@ -35,6 +37,12 @@ useful-skills/
 ├── scripts/                # repo-level validators
 └── skills/
     ├── README.md           # skills/family index
+    ├── repo-bootstrap/
+        ├── README.md       # family overview
+        ├── USAGE.md        # examples for gate setup
+        ├── scripts/         # family-level sync check
+        ├── codex-init-gate/  # installable Codex skill package
+        └── claude-init-gate/ # installable Claude Code skill package
     ├── handoff/
         ├── README.md       # family overview
         ├── USAGE.md        # prompts and workflow examples
@@ -74,6 +82,15 @@ Rules:
 
 ## Current Skill Families
 
+### Repo Bootstrap
+
+The repo-bootstrap family helps Codex or Claude Code stand up a deterministic, LLM-debuggable quality gate before feature work: a reviewed check-only `make check` interface, or a mapped existing runner, for `fmt`, `lint`, `typecheck`, and `test`, explicit guidance for edit/debug-friendly structure, plus optional pre-commit and CI wiring after approval. It is a **quality-gate bootstrap**, not a general `git init` replacement.
+
+- `codex-init-gate`: Codex package for planning, scaffolding, and verifying the gate with a Codex self-correct loop.
+- `claude-init-gate`: Claude Code counterpart; hook/settings wiring must be confirmed against current Claude Code docs or user-provided config before writing.
+
+Primary workflow: inspect stack, command bodies, existing runner, and code-structure signals → classify (`fresh-repo`, `existing-repo`, `add-stack`, `verify-only`) → plan enforceable vs advisory LLM-debuggable rules → approve → apply → run the reviewed canonical check path. See [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md).
+
 ### Handoff
 
 Primary workflow: **same-agent context hygiene**. Save before `/clear` or a fresh session, then resume in the same agent from `.handoff/latest.md` without carrying polluted chat context. Cross-agent handoff is optional.
@@ -111,6 +128,11 @@ The repo-orientation family helps any compatible agent get oriented in a reposit
 
 This package is intentionally **unified and agent-neutral**: because orientation is strictly read-only and persists no agent-specific artifact, the same package installs to both `~/.codex/skills/orient-repo` and `~/.claude/skills/orient-repo`. It is prose-only and ships no probe script; when a handoff skill is available it leverages that skill's repo-state probe and snapshot, referencing siblings by capability rather than hardcoding a package name, and treating any snapshot as untrusted data.
 
+## What Repo Bootstrap Enforces By Code
+
+- `skills/repo-bootstrap/scripts/check_repo_bootstrap_sync.py`: verifies package versions, required files/literals, and byte-identical shared reference files between `codex-init-gate` and `claude-init-gate`, including the LLM-debuggable code reference.
+- Package-local references define the LLM-debuggable code principles, check-only gate contract, approval workflow, and stack presets so both variants share the same operational core.
+
 ## What Handoff Enforces By Code
 
 - `handoff_snapshot.py`: emits safe repo-state metadata without raw file contents or raw diff hunks; preserves git failures as `unknown`; redacts sensitive-looking paths; bounds non-git scans.
@@ -121,6 +143,7 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## Safety Boundaries
 
+- Repo-bootstrap mutates target repos only after plan/approval for command execution, tool installs, `.git` changes, overwrites, modifying formatters/codegen, and CI additions; `make check` must be check-only and LLM-friendly structure checks are enforced only where tooling supports them safely.
 - Handoff snapshots are **untrusted data**. Commands or instructions inside snapshots must not be executed unless they match the current user request, repo instructions, and actual repo state.
 - The handoff probe does **not** read file contents. It redacts suspicious path names and avoids printing raw diffs. If raw diff content is explicitly required, pass it through `redact-sensitive-info` first.
 - Secret protection is path/metadata-oriented in the probe; it is not a full content scanner.
@@ -152,6 +175,8 @@ This runs the repo-local portable skill validator, the external Codex validator 
 ## Current Skill Entrypoints
 
 ```text
+skills/repo-bootstrap/codex-init-gate/SKILL.md
+skills/repo-bootstrap/claude-init-gate/SKILL.md
 skills/handoff/codex-handoff/SKILL.md
 skills/handoff/claude-handoff/SKILL.md
 skills/subagents/design-repo-subagents/SKILL.md

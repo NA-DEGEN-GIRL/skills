@@ -12,6 +12,8 @@ This is the stable LLM-first entrypoint. The repository may contain multiple ski
 
 | Capability | Target agent | Source folder | Install destination |
 |---|---|---|---|
+| repo-bootstrap | Codex | `skills/repo-bootstrap/codex-init-gate/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate` |
+| repo-bootstrap | Claude Code | `skills/repo-bootstrap/claude-init-gate/` | `$HOME/.claude/skills/claude-init-gate` |
 | handoff | Codex | `skills/handoff/codex-handoff/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff` |
 | handoff | Claude Code | `skills/handoff/claude-handoff/` | `$HOME/.claude/skills/claude-handoff` |
 | subagents | Codex | `skills/subagents/design-repo-subagents/` | `${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents` |
@@ -31,7 +33,7 @@ git clone --depth 1 https://github.com/NA-DEGEN-GIRL/skills.git "$tmpdir/skills"
 cd "$tmpdir/skills"
 ```
 
-Validate before installing. A package is discovered by a `SKILL.md` file under `skills/`; current validation also runs family-specific sync checks such as `skills/handoff/scripts/check_handoff_sync.py`.
+Validate before installing. A package is discovered by a `SKILL.md` file under `skills/`; current validation also runs family-specific sync checks such as `skills/handoff/scripts/check_handoff_sync.py` and `skills/repo-bootstrap/scripts/check_repo_bootstrap_sync.py`.
 
 ```bash
 make all
@@ -42,6 +44,9 @@ make all
 1. Identify the user's target agent: Codex, Claude Code, both, or another compatible skill system.
 2. Identify the requested capability/family, e.g. `handoff`. If the user only says "useful skills" and gives no capability, show the table above and ask which ones to install.
 3. Install only matching packages. Currently:
+   - Codex + repo-bootstrap: install `codex-init-gate` only.
+   - Claude Code + repo-bootstrap: install `claude-init-gate` only.
+   - Both + repo-bootstrap: install both init-gate packages.
    - Codex + handoff: install `codex-handoff` only.
    - Claude Code + handoff: install `claude-handoff` only.
    - Both + handoff: install both.
@@ -53,6 +58,34 @@ make all
 ## Safe Copy Install Commands
 
 Copy install is safest when this repo was cloned into a temp directory. It backs up any existing same-name install path and does not touch default `handoff`.
+
+### Codex repo-bootstrap
+
+```bash
+src="$PWD/skills/repo-bootstrap/codex-init-gate"
+dest="${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate"
+mkdir -p "$(dirname "$dest")"
+if [ -L "$dest" ]; then
+  rm "$dest"
+elif [ -e "$dest" ]; then
+  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
+fi
+cp -a "$src" "$dest"
+```
+
+### Claude Code repo-bootstrap
+
+```bash
+src="$PWD/skills/repo-bootstrap/claude-init-gate"
+dest="$HOME/.claude/skills/claude-init-gate"
+mkdir -p "$(dirname "$dest")"
+if [ -L "$dest" ]; then
+  rm "$dest"
+elif [ -e "$dest" ]; then
+  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
+fi
+cp -a "$src" "$dest"
+```
 
 ### Codex handoff
 
@@ -156,6 +189,14 @@ Restart the target agent after rollback.
 Use symlinks only if the clone path is persistent and the user wants updates to track the working copy.
 
 ```bash
+# Codex repo-bootstrap
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+ln -sfn "$PWD/skills/repo-bootstrap/codex-init-gate" "${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate"
+
+# Claude Code repo-bootstrap
+mkdir -p "$HOME/.claude/skills"
+ln -sfn "$PWD/skills/repo-bootstrap/claude-init-gate" "$HOME/.claude/skills/claude-init-gate"
+
 # Codex handoff
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
 ln -sfn "$PWD/skills/handoff/codex-handoff" "${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff"
@@ -196,9 +237,9 @@ Tell the user to restart the target agent or open a fresh session so skill metad
 Suggested final message:
 
 ```text
-Installed the requested skill package(s). Restart Codex/Claude Code or start a fresh session to pick up the new skill. For handoff trials, explicitly request `codex-handoff` or `claude-handoff` because default `handoff` may still coexist.
+Installed the requested skill package(s). Restart Codex/Claude Code or start a fresh session to pick up the new skill. During trials, explicitly request the package name such as `codex-init-gate`, `claude-init-gate`, `codex-handoff`, or `claude-handoff`.
 ```
 
 ## Routing Caveat
 
-If the default `handoff` skill is also installed, routing is resolver-defined. For deterministic routing, the user must explicitly request this skill by name or intentionally replace/rename the default after validation.
+If similarly named default skills are also installed, routing is resolver-defined. For deterministic routing, the user must explicitly request this skill by name or intentionally replace/rename the default after validation.

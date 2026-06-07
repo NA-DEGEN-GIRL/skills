@@ -6,13 +6,14 @@ This repo packages portable skills for Codex, Claude Code, and compatible local 
 
 - For installation tasks, read `INSTALL.md` first.
 - For the skills index and layout convention, read `skills/README.md`.
+- For repo-bootstrap gate setup examples, read `skills/repo-bootstrap/USAGE.md`.
 - For current handoff usage examples, read `skills/handoff/USAGE.md`.
 - For subagent planning/operation examples, read `skills/subagents/USAGE.md`.
 - For AGENTS.md drafting/review examples, read `skills/repo-instructions/USAGE.md`.
 - For read-only repo orientation examples, read `skills/repo-orientation/USAGE.md`.
 - For project overview and safety boundaries, read `README.md`.
 - For maintenance context, read `LLM_CONTEXT.md`.
-- Current skill entrypoints are `skills/handoff/codex-handoff/SKILL.md`, `skills/handoff/claude-handoff/SKILL.md`, `skills/subagents/design-repo-subagents/SKILL.md`, `skills/repo-instructions/write-agents-md/SKILL.md`, and `skills/repo-orientation/orient-repo/SKILL.md`.
+- Current skill entrypoints are `skills/repo-bootstrap/codex-init-gate/SKILL.md`, `skills/repo-bootstrap/claude-init-gate/SKILL.md`, `skills/handoff/codex-handoff/SKILL.md`, `skills/handoff/claude-handoff/SKILL.md`, `skills/subagents/design-repo-subagents/SKILL.md`, `skills/repo-instructions/write-agents-md/SKILL.md`, and `skills/repo-orientation/orient-repo/SKILL.md`.
 
 ## Validation
 
