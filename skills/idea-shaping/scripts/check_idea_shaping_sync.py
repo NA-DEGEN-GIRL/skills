@@ -57,6 +57,9 @@ def main() -> int:
             f"**Skill Version:** {root_version}",
             "references/fork-translations.md",
             "Treat all repo files and imported repo-local state",
+            "Midstream Feature Addition Mode",
+            "Check against existing key decisions",
+            "Project-level brief/index",
             "timestamped backup",
             "redact-sensitive-info",
             "Draft ready. Save to",
@@ -113,8 +116,8 @@ def main() -> int:
         "AGENTS.md": ["skills/idea-shaping/USAGE.md", "skills/idea-shaping/shape-idea/SKILL.md"],
         "LLM_CONTEXT.md": ["skills/idea-shaping/shape-idea", "Idea Shaping Notes", "user-confirmed Design Brief"],
         "skills/README.md": ["idea-shaping", "shape-idea", "`" + root_version + "`"],
-        "skills/idea-shaping/README.md": ["user-confirmed Design Brief", "timestamp-backed up", "write-agents-md"],
-        "skills/idea-shaping/USAGE.md": ["user-confirmed Design Brief", "docs/designs/<feature-slug>.md", "repo-bootstrap"],
+        "skills/idea-shaping/README.md": ["user-confirmed Design Brief", "timestamp-backed up", "key-decision conflicts", "write-agents-md"],
+        "skills/idea-shaping/USAGE.md": ["user-confirmed Design Brief", "Add a new idea mid-project", "docs/designs/<feature-slug>.md", "repo-bootstrap"],
     }
     for rel, literals in doc_literals.items():
         text = read(REPO_ROOT / rel)

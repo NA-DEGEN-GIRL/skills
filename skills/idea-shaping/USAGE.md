@@ -37,6 +37,16 @@ When the idea is solid, the skill drafts a single living document, redacts sensi
 scope, constraints, key decisions (chose X over Y, Z because…), open risks, and a changelog.
 It does not edit `AGENTS.md` or set up gates — run repo-bootstrap next if the repo lacks a canonical gate, then run `write-agents-md` so AGENTS.md can reference the accepted brief and gate without embedding full reasoning.
 
+
+## Add a new idea mid-project
+
+```text
+use shape-idea
+이미 작업 중인 앱에 팀 초대 기능도 넣고 싶어. 기존 결정이랑 충돌하는지 보고 먼저 정리해줘.
+```
+
+Expected behavior: the agent reads existing briefs/decision docs read-only, checks the new idea against accepted/current key decisions, and classifies it as current-scope update, separate feature brief, backlog/out-of-scope, or re-shape of an existing decision. New feature briefs default to `docs/designs/<feature-slug>.md`; the main `docs/design-brief.md` is only updated with an approved one-line index/changelog entry.
+
 ## Update an existing brief
 
 ```text

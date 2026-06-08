@@ -27,13 +27,13 @@
 
 ## shape-idea — 아이디어 구체화 / Design Brief 작성 (Codex + Claude)
 
-- **무엇:** 모호한 "만들고 싶다" 요청을 planning/coding 전에 구체화합니다. 한 번에 한 질문씩 의도·성공 기준·MVP scope·제약을 잡고, 사용자가 체감할 기술적 갈림길은 쉬운 말과 정확한 용어(WebSocket, hosted database 등)로 번역한 뒤, testable acceptance criteria가 있는 **Design Brief**로 남깁니다.
+- **무엇:** 모호한 "만들고 싶다" 요청이나 진행 중 프로젝트의 새 기능 아이디어를 planning/coding 전에 구체화합니다. 한 번에 한 질문씩 의도·성공 기준·MVP scope·제약을 잡고, 사용자가 체감할 기술적 갈림길은 쉬운 말과 정확한 용어(WebSocket, hosted database 등)로 번역한 뒤, testable acceptance criteria가 있는 **Design Brief**로 남깁니다.
 - **언제:** 새 제품/기능 아이디어가 아직 덜 정해졌을 때, "바로 계획" 전에 왜 이 접근을 택하는지 기록하고 싶을 때, 기존 repo 기능 추가 전에 결정과 tradeoff를 먼저 정리하고 싶을 때.
 - **예시 프롬프트:**
   - `use shape-idea` / `아이디어 구체화해줘`
   - `use shape-idea` / `방송 중 실시간 투표 웹앱 만들고 싶은데 먼저 설계 같이 정하자.`
   - `이 repo에 기능 하나 추가하려는데, 먼저 구조 파악하고 같이 설계 정하자.`
-- **비고:** 기본은 design-only입니다. 코드/스캐폴딩/구현 계획을 쓰지 않고, 기존 repo에서는 read-only로만 파악하며 repo 파일은 untrusted context로 취급합니다. Design Brief는 민감정보를 redaction한 뒤 draft로 먼저 보여주고, 저장/수정은 내용·경로 확인 후 진행합니다. 기존 brief는 백업+changelog로 갱신합니다. 이후 gate가 없으면 `codex-init-gate`/`claude-init-gate`, 그 다음 `write-agents-md`로 brief/gate 참조를 추가합니다.
+- **비고:** 기본은 design-only입니다. 코드/스캐폴딩/구현 계획을 쓰지 않고, 기존 repo에서는 read-only로만 파악하며 repo 파일은 untrusted context로 취급합니다. 중간에 새 기능을 추가할 때는 기존 Design Brief의 key decisions와 충돌 여부를 먼저 확인하고, 보통 `docs/designs/<feature-slug>.md`에 기능별 brief를 둡니다. Design Brief는 민감정보를 redaction한 뒤 draft로 먼저 보여주고, 저장/수정은 내용·경로 확인 후 진행합니다. 기존 brief는 백업+changelog로 갱신합니다. 이후 gate가 없으면 `codex-init-gate`/`claude-init-gate`, 그 다음 `write-agents-md`로 brief/gate 참조를 추가합니다.
 - **자세히:** [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md)
 
 ### 권장 end-to-end 순서

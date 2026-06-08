@@ -90,9 +90,9 @@ Rules:
 
 ### Idea Shaping
 
-The idea-shaping family helps Codex or Claude Code turn an underspecified product/build/feature idea into a user-confirmed **Design Brief** before planning or coding. It clarifies what/why, translates consequential product-shaping technical forks into plain language with proper terms, stress-tests risky assumptions, and records testable acceptance criteria plus the alternatives rejected. The installable package is `skills/idea-shaping/shape-idea/`.
+The idea-shaping family helps Codex or Claude Code turn an underspecified product/build/feature idea into a user-confirmed **Design Brief** before planning or coding, including mid-project feature additions before implementation. It clarifies what/why, translates consequential product-shaping technical forks into plain language with proper terms, stress-tests risky assumptions, and records testable acceptance criteria plus the alternatives rejected. The installable package is `skills/idea-shaping/shape-idea/`.
 
-This package is intentionally **unified and agent-neutral**: shaping is conversational and its durable artifact is a project-local Design Brief, not agent-specific state. It writes no code, does not edit `AGENTS.md`, treats repo files as untrusted context, redacts sensitive content, and asks before saving or updating a brief. After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the accepted brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
+This package is intentionally **unified and agent-neutral**: shaping is conversational and its durable artifact is a project-local Design Brief, not agent-specific state. It writes no code, does not edit `AGENTS.md`, treats repo files as untrusted context, checks midstream ideas against existing key decisions, redacts sensitive content, and asks before saving or updating a brief. After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the accepted brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
 
 ## Recommended End-to-End Flow
 
