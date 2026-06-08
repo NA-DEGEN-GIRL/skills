@@ -46,6 +46,10 @@ def main() -> int:
         "Repo Orientation",
         "Quality Gate",
         "repo-bootstrap / init-gate",
+        "Decision Docs / Design Briefs",
+        "docs/design-brief.md",
+        "docs/designs/*.md",
+        "not blanket authority",
         "read-only",
     ]
     missing = [literal for literal in expected_literals if literal not in skill]
@@ -56,7 +60,7 @@ def main() -> int:
         print("OK orient-repo SKILL literals")
 
     checklist = read(PACKAGE / "references/orientation-checklist.md")
-    checklist_literals = ["Quality Gate", "Canonical check path", "Unknowns To Surface"]
+    checklist_literals = ["Quality Gate", "Canonical check path", "Decision Docs / Design Briefs", "docs/design-brief.md", "Unknowns To Surface"]
     missing_checklist = [literal for literal in checklist_literals if literal not in checklist]
     if missing_checklist:
         print(f"CHECKLIST LITERAL MISSING: {missing_checklist}")

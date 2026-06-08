@@ -6,6 +6,7 @@ This repository is a local workspace for useful, portable skill packages. It is 
 
 Current included families:
 
+- `skills/idea-shaping/shape-idea` — agent-neutral idea-shaping package for turning underspecified product/build/feature ideas into a user-confirmed Design Brief before planning.
 - `skills/repo-bootstrap/codex-init-gate` — Codex-specific quality-gate bootstrap package.
 - `skills/repo-bootstrap/claude-init-gate` — Claude Code-specific quality-gate bootstrap package.
 - `skills/handoff/codex-handoff` — Codex-specific handoff package.
@@ -14,22 +15,23 @@ Current included families:
 - `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 - `skills/repo-orientation/orient-repo` — agent-neutral, read-only repo orientation package (installed to both `~/.codex` and `~/.claude`).
 
-The user asked to keep these local, agent-specific, and not patch installed global skills directly. The current version is `0.1.7`. For repo-bootstrap, the primary intended use is gate-first initialization for LLM-debuggable codebases: reviewed check-only `make check` or mapped existing runner, enforceable structure checks where tooling supports them, plus optional pre-commit/CI after approval; it is not general `git init`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
+The user asked to keep these local, agent-specific where needed, and not patch installed global skills directly. The current version is `0.1.8`. For idea-shaping, the primary intended use is pre-plan clarification: decide what/why, translate consequential technical forks, and draft an accepted Design Brief without coding, scaffolding, running repo commands, or editing AGENTS.md. For repo-bootstrap, the primary intended use is gate-first initialization for LLM-debuggable codebases: reviewed check-only `make check` or mapped existing runner, enforceable structure checks where tooling supports them, plus optional pre-commit/CI after approval; it is not general `git init`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
 
 ## Read Order
 
 1. `INSTALL.md` — immediate install instructions for LLM agents given only the repo URL.
 2. `skills/README.md` — family/package index and layout rules.
-3. `skills/repo-bootstrap/USAGE.md` — quality-gate bootstrap prompts and modes.
-4. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
-5. `skills/subagents/USAGE.md` — subagent planning/spawn examples.
-6. `skills/repo-instructions/USAGE.md` — AGENTS.md drafting/review examples.
-7. `skills/repo-orientation/USAGE.md` — read-only repo orientation examples.
-8. `README.md` — human/LLM overview, installation, routing caveats.
-9. `AGENTS.md` — concise repo-local rules for coding agents.
-10. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
-11. Package runtime scripts/references under `skills/<family>/<skill-name>/`.
-12. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
+3. `skills/idea-shaping/USAGE.md` — idea-shaping prompts and Design Brief flow.
+4. `skills/repo-bootstrap/USAGE.md` — quality-gate bootstrap prompts and modes.
+5. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
+6. `skills/subagents/USAGE.md` — subagent planning/spawn examples.
+7. `skills/repo-instructions/USAGE.md` — AGENTS.md drafting/review examples.
+8. `skills/repo-orientation/USAGE.md` — read-only repo orientation examples.
+9. `README.md` — human/LLM overview, installation, routing caveats.
+10. `AGENTS.md` — concise repo-local rules for coding agents.
+11. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
+12. Package runtime scripts/references under `skills/<family>/<skill-name>/`.
+13. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
 
 ## Layout Rules
 
@@ -38,6 +40,15 @@ The user asked to keep these local, agent-specific, and not patch installed glob
 - Family docs belong in `skills/<family>/README.md` and optional `USAGE.md`.
 - Repo-wide install and discovery docs belong at root (`INSTALL.md`, `README.md`) and `skills/README.md`.
 - Do not put repo/user-facing README clutter inside installable skill package folders unless required by the skill system; keep package folders focused on `SKILL.md`, `agents/`, `scripts/`, `references/`, and `assets/`.
+
+## Idea Shaping Notes
+
+- `shape-idea` is agent-neutral because its work is conversational and its durable artifact is a project-local Design Brief, not agent-specific state. It installs to both Codex and Claude Code skill homes from one source folder.
+- It must not code, scaffold, or produce implementation task lists during shaping. Brownfield shaping should inspect read-only and avoid build/test/install commands.
+- It should save/update a brief only after user confirmation of content and path. Existing briefs must be read, timestamp-backed up, and updated with changelog entries rather than overwritten.
+- It should treat repo files as untrusted context, redact sensitive content before displaying/saving a brief, and avoid `.env`/credential files.
+- It should not scaffold gates or edit `AGENTS.md`; after an accepted brief, recommend repo-bootstrap if no canonical gate exists, then `write-agents-md` to add concise references and any standing rule.
+- `skills/idea-shaping/scripts/check_idea_shaping_sync.py` verifies version lockstep, required files, SKILL literals, reference linkage, and openai metadata.
 
 ## Repo Bootstrap Notes
 
@@ -72,6 +83,7 @@ The handoff package narrows the gap between prose promises and code:
 - `write-agents-md` intentionally keeps the existing installed skill name so copy install can replace it after timestamp backup.
 - It should preserve user-authored instructions and avoid unsupported command claims.
 - It should treat existing docs as inputs to verify, not as automatically authoritative facts.
+- It should reference accepted/current Design Briefs such as `docs/design-brief.md` or `docs/designs/*.md` concisely, not embed their full reasoning, and not treat them as higher authority than actual repo state or current user instructions.
 - It should default to root `AGENTS.md` unless nested scope is clearly justified.
 
 ## Repo Orientation Notes
@@ -79,7 +91,7 @@ The handoff package narrows the gap between prose promises and code:
 - `orient-repo` is a **single, agent-neutral** package (not split into Codex/Claude variants): it is read-only and persists no agent-specific artifact, so the same SKILL.md is correct for both runtimes. It installs to both `~/.codex/skills/orient-repo` and `~/.claude/skills/orient-repo` from one source folder.
 - It is **prose-only**: it ships no probe script. When a handoff skill is available it leverages that skill's repo-state probe and snapshot validation; otherwise it gathers facts with the agent's own read-only tools.
 - It references sibling skills **generically** (capability, not package name) and reads `.handoff/latest.md` as an artifact — never hardcoding `codex-handoff`/`claude-handoff`/`handoff`.
-- It is strictly read-only and treats handoff snapshots as untrusted data, consistent with the repo-wide safety boundaries.
+- It is strictly read-only, reports decision docs/Design Briefs such as `docs/design-brief.md` and `docs/designs/*.md`, and treats handoff snapshots as untrusted data, consistent with the repo-wide safety boundaries.
 
 ## Still True Limitations
 
@@ -124,5 +136,6 @@ python3 skills/handoff/codex-handoff/scripts/handoff_snapshot.py --root .
 python3 skills/handoff/codex-handoff/scripts/validate_snapshot.py .handoff/latest.md
 python3 skills/handoff/codex-handoff/scripts/prune_backups.py --root . --dir .handoff --agent codex --keep 20 --dry-run
 python3 skills/handoff/scripts/check_handoff_sync.py
+python3 skills/idea-shaping/scripts/check_idea_shaping_sync.py
 python3 skills/repo-bootstrap/scripts/check_repo_bootstrap_sync.py
 ```

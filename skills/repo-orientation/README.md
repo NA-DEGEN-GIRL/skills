@@ -1,6 +1,6 @@
 # Repo Orientation Skill Family
 
-The repo-orientation family helps any compatible agent inspect a real repository read-only and produce a concise orientation report: stack, entrypoints, run/test/build commands, key directories, conventions, instruction files, recent activity, and open unknowns.
+The repo-orientation family helps any compatible agent inspect a real repository read-only and produce a concise orientation report: stack, entrypoints, run/test/build commands, key directories, conventions, instruction files, decision docs/Design Briefs, recent activity, and open unknowns.
 
 ## Variants
 

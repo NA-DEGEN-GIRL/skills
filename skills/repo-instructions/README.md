@@ -21,3 +21,5 @@ This package intentionally uses the same name as the existing local Codex skill 
 ## Usage
 
 Read [`USAGE.md`](USAGE.md) for review, draft, and update examples.
+
+`write-agents-md` can also add concise references to accepted/current Design Briefs or decision docs without embedding their full reasoning.

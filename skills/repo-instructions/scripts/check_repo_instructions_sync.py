@@ -47,6 +47,14 @@ def main() -> int:
         "Prefer static evidence over executing commands",
         "AGENTS.md` is free-form Markdown",
         "redact-sensitive-info",
+        "Design Brief",
+        "docs/design-brief.md",
+        "docs/designs/*.md",
+        "do not embed the full reasoning",
+        "accepted/current Design Brief",
+        "changelog",
+        "plan/build",
+        "not higher authority than actual repo state",
     ]
     for path in required_files:
         rel = path.relative_to(PACKAGE).as_posix()

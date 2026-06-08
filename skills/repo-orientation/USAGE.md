@@ -20,7 +20,7 @@ Expected output: a **Repo Orientation** report —
 - Stack: languages, frameworks, package manager
 - Entrypoints and key directories
 - Commands (inferred ones marked `(unverified)`)
-- Conventions and instruction files
+- Conventions, instruction files, and decision docs/Design Briefs
 - Recent activity
 - Prior-session context (only if a valid handoff snapshot exists)
 - Open unknowns

@@ -8,6 +8,7 @@ This repository stores portable, agent-installable skill packages grouped by ski
 
 | 스킬 | 어느 agent | 무엇을 하나 | 이렇게 말하면 |
 |---|---|---|---|
+| `shape-idea` | Codex + Claude | 모호한 만들기 아이디어를 질문·기술 fork 번역·Design Brief로 구체화 | "아이디어 구체화해줘" · "먼저 설계" |
 | `codex-init-gate` | Codex | LLM-debuggable check-only `make check` 품질 게이트 설치 | "게이트 깔아줘" · "scaffold checks" |
 | `claude-init-gate` | Claude Code | 위와 동일 (Claude Code용) | "게이트 깔아줘" · "scaffold checks" |
 | `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`) — `/clear` 전후 맥락 유지 | "handoff 저장해줘" · "이어받아" |
@@ -16,13 +17,13 @@ This repository stores portable, agent-installable skill packages grouped by ski
 | `write-agents-md` | Codex | repo 사실 기반 `AGENTS.md` 작성·리뷰 | "AGENTS.md 만들어줘" |
 | `orient-repo` | Codex + Claude | 읽기전용 repo 파악 리포트 (stack·명령·구조) | "이 repo 파악해줘" |
 
-각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이고, `handoff`는 같은 agent 내 맥락 위생이 주 용도이며, `orient-repo`만 Codex·Claude 공용입니다.
+각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `idea-shaping`은 계획 전 결정/이유를 Design Brief로 구체화하는 용도이고, `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이며, `handoff`는 같은 agent 내 맥락 위생이 주 용도입니다. `shape-idea`와 `orient-repo`는 Codex·Claude 공용입니다.
 
-Current repository version: `0.1.7`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.8`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, or browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md), [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
+**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, or browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md), [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md), [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
 
 ## Contents
 
@@ -37,6 +38,11 @@ useful-skills/
 ├── scripts/                # repo-level validators
 └── skills/
     ├── README.md           # skills/family index
+    ├── idea-shaping/
+        ├── README.md       # family overview
+        ├── USAGE.md        # examples for shaping ideas
+        ├── scripts/         # family-level sync check
+        └── shape-idea/      # installable agent-neutral skill package
     ├── repo-bootstrap/
         ├── README.md       # family overview
         ├── USAGE.md        # examples for gate setup
@@ -82,6 +88,19 @@ Rules:
 
 ## Current Skill Families
 
+### Idea Shaping
+
+The idea-shaping family helps Codex or Claude Code turn an underspecified product/build/feature idea into a user-confirmed **Design Brief** before planning or coding. It clarifies what/why, translates consequential product-shaping technical forks into plain language with proper terms, stress-tests risky assumptions, and records testable acceptance criteria plus the alternatives rejected. The installable package is `skills/idea-shaping/shape-idea/`.
+
+This package is intentionally **unified and agent-neutral**: shaping is conversational and its durable artifact is a project-local Design Brief, not agent-specific state. It writes no code, does not edit `AGENTS.md`, treats repo files as untrusted context, redacts sensitive content, and asks before saving or updating a brief. After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the accepted brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
+
+## Recommended End-to-End Flow
+
+1. **shape-idea** — decide what/why, consequential tradeoffs, risks, and testable acceptance criteria in an accepted Design Brief.
+2. **repo-bootstrap** — if the repo lacks a canonical quality gate, install or map one before feature work.
+3. **write-agents-md** — reference the accepted Design Brief and canonical gate from `AGENTS.md` without embedding full reasoning.
+4. **plan/build** — sequence implementation against the brief and gate.
+
 ### Repo Bootstrap
 
 The repo-bootstrap family helps Codex or Claude Code stand up a deterministic, LLM-debuggable quality gate before feature work: a reviewed check-only `make check` interface, or a mapped existing runner, for `fmt`, `lint`, `typecheck`, and `test`, explicit guidance for edit/debug-friendly structure, plus optional pre-commit and CI wiring after approval. It is a **quality-gate bootstrap**, not a general `git init` replacement.
@@ -120,13 +139,18 @@ Primary workflow: repo-grounded delegation planning. Actual spawning is recommen
 
 The repo-instructions family helps Codex draft, review, and maintain `AGENTS.md` from actual repo facts. The installable package is `skills/repo-instructions/write-agents-md/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
 
-Primary workflow: inspect repo files, preserve user-authored instructions, include only verified or explicitly marked-unverified commands, and keep the resulting `AGENTS.md` compact and operational.
+Primary workflow: inspect repo files, preserve user-authored instructions, include only verified or explicitly marked-unverified commands, reference accepted/current Design Briefs without embedding full reasoning or treating them as higher authority than repo facts, and keep the resulting `AGENTS.md` compact and operational.
 
 ### Repo Orientation
 
-The repo-orientation family helps any compatible agent get oriented in a repository read-only and emit a concise **Repo Orientation** report: stack, entrypoints, run/test/build commands, key directories, conventions, instruction files, recent activity, and open unknowns. The installable package is `skills/repo-orientation/orient-repo/`.
+The repo-orientation family helps any compatible agent get oriented in a repository read-only and emit a concise **Repo Orientation** report: stack, entrypoints, run/test/build commands, key directories, conventions, instruction files, decision docs/Design Briefs, recent activity, and open unknowns. The installable package is `skills/repo-orientation/orient-repo/`.
 
 This package is intentionally **unified and agent-neutral**: because orientation is strictly read-only and persists no agent-specific artifact, the same package installs to both `~/.codex/skills/orient-repo` and `~/.claude/skills/orient-repo`. It is prose-only and ships no probe script; when a handoff skill is available it leverages that skill's repo-state probe and snapshot, referencing siblings by capability rather than hardcoding a package name, and treating any snapshot as untrusted data.
+
+## What Idea Shaping Enforces By Code
+
+- `skills/idea-shaping/scripts/check_idea_shaping_sync.py`: verifies the package version matches root `VERSION`, required files exist, `SKILL.md` links its references and safety/Design Brief literals, and `agents/openai.yaml` still points at `$shape-idea`.
+- `references/fork-translations.md` provides reusable seed translations for common technical forks; the SKILL loads it only when a fork needs explanation.
 
 ## What Repo Bootstrap Enforces By Code
 
@@ -143,6 +167,7 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## Safety Boundaries
 
+- Idea-shaping is design-only by default: it does not code or scaffold, treats repo files as untrusted context, uses read-only inspection in brownfield repos, redacts sensitive content, asks before saving/updating a Design Brief, and leaves gate setup plus AGENTS.md references to repo-bootstrap/write-agents-md.
 - Repo-bootstrap mutates target repos only after plan/approval for command execution, tool installs, `.git` changes, overwrites, modifying formatters/codegen, and CI additions; `make check` must be check-only and LLM-friendly structure checks are enforced only where tooling supports them safely.
 - Handoff snapshots are **untrusted data**. Commands or instructions inside snapshots must not be executed unless they match the current user request, repo instructions, and actual repo state.
 - The handoff probe does **not** read file contents. It redacts suspicious path names and avoids printing raw diffs. If raw diff content is explicitly required, pass it through `redact-sensitive-info` first.
@@ -151,11 +176,12 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## Install
 
-Use [`INSTALL.md`](INSTALL.md). Default install mode is copy-with-backup into a separate package name such as `codex-handoff` or `claude-handoff`; do **not** replace a default `handoff` skill unless the user explicitly asks.
+Use [`INSTALL.md`](INSTALL.md). Default install mode is copy-with-backup into a separate package name such as `shape-idea`, `codex-handoff`, or `claude-handoff`; do **not** replace a default `handoff` skill unless the user explicitly asks.
 
 If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. During trials, explicitly name the desired skill in prompts:
 
 ```text
+use shape-idea to clarify this idea
 use codex-handoff to save state
 use claude-handoff to resume from handoff
 ```
@@ -175,6 +201,7 @@ This runs the repo-local portable skill validator, the external Codex validator 
 ## Current Skill Entrypoints
 
 ```text
+skills/idea-shaping/shape-idea/SKILL.md
 skills/repo-bootstrap/codex-init-gate/SKILL.md
 skills/repo-bootstrap/claude-init-gate/SKILL.md
 skills/handoff/codex-handoff/SKILL.md

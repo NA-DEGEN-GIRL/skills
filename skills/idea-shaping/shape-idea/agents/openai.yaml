@@ -1,0 +1,5 @@
+# Skill-creator UI metadata convention. This filename is not an OpenAI-only claim.
+interface:
+  display_name: "Shape Idea"
+  short_description: "Shape a vague idea into a confirmed brief"
+  default_prompt: "Use $shape-idea to turn this idea into a user-confirmed Design Brief before planning."

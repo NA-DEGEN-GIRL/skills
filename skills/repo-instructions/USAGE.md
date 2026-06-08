@@ -36,3 +36,7 @@ packages/api/에 별도 AGENTS.md가 필요한지 판단하고, 필요하면 roo
 - Mention the target path if you care about a subdirectory.
 - Ask the agent to mark commands unverified if it cannot run them.
 - Ask for compact output; `AGENTS.md` should be operational, not a long README.
+
+## Design Brief references
+
+If `docs/design-brief.md` or `docs/designs/*.md` exists, `write-agents-md` should reference accepted/current briefs concisely and add a changelog/update rule when relevant; it should not paste the brief's reasoning into `AGENTS.md`.
