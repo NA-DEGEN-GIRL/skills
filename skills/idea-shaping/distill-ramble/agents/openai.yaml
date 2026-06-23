@@ -1,0 +1,4 @@
+interface:
+  display_name: "Distill Ramble"
+  short_description: "Turn rambling talk into idea seeds"
+  default_prompt: "Use $distill-ramble to talk through a messy idea and distill it into seed sentences."

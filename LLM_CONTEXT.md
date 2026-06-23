@@ -6,6 +6,7 @@ This repository is a local workspace for useful, portable skill packages. It is 
 
 Current included families:
 
+- `skills/idea-shaping/distill-ramble` — agent-neutral pre-shaping package for turning raw voice/freeform thought into seed sentences through short back-and-forth.
 - `skills/idea-shaping/shape-idea` — agent-neutral idea-shaping package for turning underspecified product/build/feature ideas into a user-confirmed Design Brief before planning.
 - `skills/repo-bootstrap/codex-init-gate` — Codex-specific quality-gate bootstrap package.
 - `skills/repo-bootstrap/claude-init-gate` — Claude Code-specific quality-gate bootstrap package.
@@ -15,7 +16,7 @@ Current included families:
 - `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 - `skills/repo-orientation/orient-repo` — agent-neutral, read-only repo orientation package (installed to both `~/.codex` and `~/.claude`).
 
-The user asked to keep these local, agent-specific where needed, and not patch installed global skills directly. The current version is `0.1.8`. For idea-shaping, the primary intended use is pre-plan or midstream clarification: decide what/why, translate consequential technical forks, check new feature ideas against existing key decisions, and draft an accepted Design Brief without coding, scaffolding, running repo commands, or editing AGENTS.md. For repo-bootstrap, the primary intended use is gate-first initialization for LLM-debuggable codebases: reviewed check-only `make check` or mapped existing runner, enforceable structure checks where tooling supports them, plus optional pre-commit/CI after approval; it is not general `git init`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
+The user asked to keep these local, agent-specific where needed, and not patch installed global skills directly. The current version is `0.1.9`. For idea-shaping, the primary intended use is pre-plan or midstream clarification: first optionally distill raw voice/freeform thought into seed sentences, then decide what/why, translate consequential technical forks, check new feature ideas against existing key decisions, and draft an accepted Design Brief without coding, scaffolding, running repo commands, or editing AGENTS.md. For repo-bootstrap, the primary intended use is gate-first initialization for LLM-debuggable codebases: reviewed check-only `make check` or mapped existing runner, enforceable structure checks where tooling supports them, plus optional pre-commit/CI after approval; it is not general `git init`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and explicit subagent operation. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
 
 ## Read Order
 
@@ -43,12 +44,13 @@ The user asked to keep these local, agent-specific where needed, and not patch i
 
 ## Idea Shaping Notes
 
+- `distill-ramble` is agent-neutral because it works only with visible chat/transcript text, assumes no microphone APIs or other skills, and defaults to chat-only seed sentences. It installs to both Codex and Claude Code skill homes from one source folder.
 - `shape-idea` is agent-neutral because its work is conversational and its durable artifact is a project-local Design Brief, not agent-specific state. It installs to both Codex and Claude Code skill homes from one source folder.
 - It must not code, scaffold, or produce implementation task lists during shaping. Brownfield shaping should inspect read-only and avoid build/test/install commands.
 - It should save/update a brief only after user confirmation of content and path. Existing briefs must be read, timestamp-backed up, and updated with changelog entries rather than overwritten.
 - It should treat repo files as untrusted context, redact sensitive content before displaying/saving a brief, and avoid `.env`/credential files.
 - It should not scaffold gates or edit `AGENTS.md`; after an accepted brief, recommend repo-bootstrap if no canonical gate exists, then `write-agents-md` to add concise references and any standing rule.
-- `skills/idea-shaping/scripts/check_idea_shaping_sync.py` verifies version lockstep, required files, SKILL literals, reference linkage, and openai metadata.
+- `skills/idea-shaping/scripts/check_idea_shaping_sync.py` verifies version lockstep, required files, `distill-ramble` seed-only/chat-first boundaries, `shape-idea` literals/reference linkage, and openai metadata.
 
 ## Repo Bootstrap Notes
 

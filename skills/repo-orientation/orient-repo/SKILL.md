@@ -5,7 +5,7 @@ description: Inspect a repository read-only and produce a concise orientation re
 
 # Orient Repo
 
-**Skill Version:** 0.1.8
+**Skill Version:** 0.1.9
 
 Use this agent-neutral skill to get oriented in a real repository. It is strictly **read-only**: it inspects and reports, and modifies nothing. Prefer repo facts over generic advice.
 

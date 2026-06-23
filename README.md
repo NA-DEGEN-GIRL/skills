@@ -8,6 +8,7 @@ This repository stores portable, agent-installable skill packages grouped by ski
 
 | 스킬 | 어느 agent | 무엇을 하나 | 이렇게 말하면 |
 |---|---|---|---|
+| `distill-ramble` | Codex + Claude | 마이크/대화로 떠든 raw thought를 seed 문장으로 압축 | "마이크로 떠드는 걸 정리해줘" · "seed 문장으로 만들어줘" |
 | `shape-idea` | Codex + Claude | 모호한 만들기 아이디어를 질문·기술 fork 번역·Design Brief로 구체화 | "아이디어 구체화해줘" · "먼저 설계" |
 | `codex-init-gate` | Codex | LLM-debuggable check-only `make check` 품질 게이트 설치 | "게이트 깔아줘" · "scaffold checks" |
 | `claude-init-gate` | Claude Code | 위와 동일 (Claude Code용) | "게이트 깔아줘" · "scaffold checks" |
@@ -17,9 +18,9 @@ This repository stores portable, agent-installable skill packages grouped by ski
 | `write-agents-md` | Codex | repo 사실 기반 `AGENTS.md` 작성·리뷰 | "AGENTS.md 만들어줘" |
 | `orient-repo` | Codex + Claude | 읽기전용 repo 파악 리포트 (stack·명령·구조) | "이 repo 파악해줘" |
 
-각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `idea-shaping`은 계획 전 결정/이유를 Design Brief로 구체화하는 용도이고, `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이며, `handoff`는 같은 agent 내 맥락 위생이 주 용도입니다. `shape-idea`와 `orient-repo`는 Codex·Claude 공용입니다.
+각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `idea-shaping`은 raw voice or freeform thought를 seed 문장으로 정리한 뒤 계획 전 결정/이유를 Design Brief로 구체화하는 용도이고, `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이며, `handoff`는 같은 agent 내 맥락 위생이 주 용도입니다. `distill-ramble`, `shape-idea`, `orient-repo`는 Codex·Claude 공용입니다.
 
-Current repository version: `0.1.8`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.9`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
@@ -42,6 +43,7 @@ useful-skills/
         ├── README.md       # family overview
         ├── USAGE.md        # examples for shaping ideas
         ├── scripts/         # family-level sync check
+        ├── distill-ramble/ # installable agent-neutral pre-shaping skill package
         └── shape-idea/      # installable agent-neutral skill package
     ├── repo-bootstrap/
         ├── README.md       # family overview
@@ -90,16 +92,17 @@ Rules:
 
 ### Idea Shaping
 
-The idea-shaping family helps Codex or Claude Code turn an underspecified product/build/feature idea into a user-confirmed **Design Brief** before planning or coding, including mid-project feature additions before implementation. It clarifies what/why, translates consequential product-shaping technical forks into plain language with proper terms, stress-tests risky assumptions, and records testable acceptance criteria plus the alternatives rejected. The installable package is `skills/idea-shaping/shape-idea/`.
+The idea-shaping family helps Codex or Claude Code move from raw voice or freeform thought to a user-confirmed **Design Brief** before planning or coding, including mid-project feature additions before implementation. `distill-ramble` first turns messy spoken/typed thinking into reusable seed sentences; `shape-idea` then clarifies what/why, translates consequential product-shaping technical forks into plain language with proper terms, stress-tests risky assumptions, and records testable acceptance criteria plus the alternatives rejected. The installable packages are `skills/idea-shaping/distill-ramble/` and `skills/idea-shaping/shape-idea/`.
 
-This package is intentionally **unified and agent-neutral**: shaping is conversational and its durable artifact is a project-local Design Brief, not agent-specific state. It writes no code, does not edit `AGENTS.md`, treats repo files as untrusted context, checks midstream ideas against existing key decisions, redacts sensitive content, and asks before saving or updating a brief. After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the accepted brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
+These packages are intentionally **unified and agent-neutral**: the work is conversational, `distill-ramble` defaults to chat-only seed material, and `shape-idea`'s durable artifact is a project-local Design Brief, not agent-specific state. They write no code, do not edit `AGENTS.md`, treat repo files as untrusted context, and ask before saving any brief or explicit distillation file. After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the accepted brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
 
 ## Recommended End-to-End Flow
 
-1. **shape-idea** — decide what/why, consequential tradeoffs, risks, and testable acceptance criteria in an accepted Design Brief.
-2. **repo-bootstrap** — if the repo lacks a canonical quality gate, install or map one before feature work.
-3. **write-agents-md** — reference the accepted Design Brief and canonical gate from `AGENTS.md` without embedding full reasoning.
-4. **plan/build** — sequence implementation against the brief and gate.
+1. **distill-ramble** — optional: turn raw voice/freeform thought into seed sentences.
+2. **shape-idea** — decide what/why, consequential tradeoffs, risks, and testable acceptance criteria in an accepted Design Brief.
+3. **repo-bootstrap** — if the repo lacks a canonical quality gate, install or map one before feature work.
+4. **write-agents-md** — reference the accepted Design Brief and canonical gate from `AGENTS.md` without embedding full reasoning.
+5. **plan/build** — sequence implementation against the brief and gate.
 
 ### Repo Bootstrap
 
@@ -149,7 +152,7 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## What Idea Shaping Enforces By Code
 
-- `skills/idea-shaping/scripts/check_idea_shaping_sync.py`: verifies the package version matches root `VERSION`, required files exist, `SKILL.md` links its references and safety/Design Brief literals, and `agents/openai.yaml` still points at `$shape-idea`.
+- `skills/idea-shaping/scripts/check_idea_shaping_sync.py`: verifies package versions match root `VERSION`, required files exist, `distill-ramble` preserves seed-only/chat-first boundaries, `shape-idea` links its references and safety/Design Brief literals, and `agents/openai.yaml` metadata stays fresh.
 - `references/fork-translations.md` provides reusable seed translations for common technical forks; the SKILL loads it only when a fork needs explanation.
 
 ## What Repo Bootstrap Enforces By Code
@@ -176,11 +179,12 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## Install
 
-Use [`INSTALL.md`](INSTALL.md). Default install mode is copy-with-backup into a separate package name such as `shape-idea`, `codex-handoff`, or `claude-handoff`; do **not** replace a default `handoff` skill unless the user explicitly asks.
+Use [`INSTALL.md`](INSTALL.md). Default install mode is copy-with-backup into a separate package name such as `distill-ramble`, `shape-idea`, `codex-handoff`, or `claude-handoff`; do **not** replace a default `handoff` skill unless the user explicitly asks.
 
 If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. During trials, explicitly name the desired skill in prompts:
 
 ```text
+use distill-ramble to turn this voice ramble into seed sentences
 use shape-idea to clarify this idea
 use codex-handoff to save state
 use claude-handoff to resume from handoff
@@ -201,6 +205,7 @@ This runs the repo-local portable skill validator, the external Codex validator 
 ## Current Skill Entrypoints
 
 ```text
+skills/idea-shaping/distill-ramble/SKILL.md
 skills/idea-shaping/shape-idea/SKILL.md
 skills/repo-bootstrap/codex-init-gate/SKILL.md
 skills/repo-bootstrap/claude-init-gate/SKILL.md

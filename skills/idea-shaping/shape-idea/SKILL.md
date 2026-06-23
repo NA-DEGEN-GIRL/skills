@@ -1,11 +1,11 @@
 ---
 name: shape-idea
-description: 'Shape an underspecified product/build/feature idea into a user-confirmed Design Brief before planning or coding, including deciding whether a new mid-project idea belongs in scope, a feature brief, backlog, or a re-shape of existing decisions. Use when the user asks to think through, shape, or decide an unclear idea before implementation, including "아이디어 구체화해줘", "먼저 설계 같이 정하자", or "새 기능 넣기 전에 정리하자"; not for visual design, UI asset generation, well-scoped implementation, architecture review for an already-scoped task, pure Q&A, edits, or bug fixes unless explicitly requested.'
+description: 'Shape an underspecified product/build/feature idea into a user-confirmed Design Brief before planning or coding, including deciding whether a new mid-project idea belongs in scope, a feature brief, backlog, or a re-shape of existing decisions. Use when the user asks to think through, shape, or decide an unclear idea before implementation, including "아이디어 구체화해줘", "먼저 설계 같이 정하자", or "새 기능 넣기 전에 정리하자"; not for visual design, UI asset generation, well-scoped implementation, architecture review for an already-scoped task, pure Q&A, edits, or bug fixes; not for raw unstructured rambling, thinking out loud, or voice-note/transcript cleanup that still needs distilling into seed sentences first; unless explicitly requested.'
 ---
 
 # Shape Idea
 
-**Skill Version:** 0.1.8
+**Skill Version:** 0.1.9
 
 Use this skill to turn a vague build idea into a **user-confirmed Design Brief** before planning or coding, or to decide how a new idea fits an in-progress project before implementation. The brief records what/why, consequential tradeoffs, rejected alternatives, risks, and testable acceptance criteria so later planning has a decision record instead of a guess.
 

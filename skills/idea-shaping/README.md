@@ -1,44 +1,42 @@
 # Idea Shaping Skill Family
 
-The idea-shaping family helps any compatible agent turn an underspecified product/build/feature idea into a user-confirmed Design Brief *before* planning or coding, including mid-project feature additions before implementation. Through short back-and-forth it pins down what to
-build and why, translates the consequential technical forks into plain language (with proper
-terms), keeps options open, stress-tests the riskiest calls, and produces a living **Design
-Brief** with testable acceptance criteria.
+The idea-shaping family helps any compatible agent move from raw, unstructured thought to a user-confirmed Design Brief *before* planning or coding. It now has two adjacent conversational packages:
+
+1. `distill-ramble` turns voice-like freeform thinking into reusable **seed sentences**.
+2. `shape-idea` turns an underspecified idea into a user-confirmed **Design Brief** with testable acceptance criteria.
 
 ## Variants
 
 | Variant | Install destination | Use when |
 |---|---|---|
+| `distill-ramble` | `${CODEX_HOME:-$HOME/.codex}/skills/distill-ramble` and/or `$HOME/.claude/skills/distill-ramble` | You want to talk freely, ramble, or paste voice notes and have the agent help find seed sentences without making a plan |
 | `shape-idea` | `${CODEX_HOME:-$HOME/.codex}/skills/shape-idea` and/or `$HOME/.claude/skills/shape-idea` | You want to concretize an underspecified idea into a user-confirmed design brief before planning |
 
-This family ships a **single, agent-neutral package**. Like `orient-repo`, it is not split into
-Codex/Claude variants: it is a conversational design phase whose only artifact is a plain-text
-Design Brief (`docs/design-brief.md` for a greenfield project or `docs/designs/<feature-slug>.md` for a brownfield feature) — there is no agent-specific persisted state, provenance,
-or AGENTS.md write target, so the same package is correct for both runtimes. Install the
-same source folder to whichever agent homes you use.
+Both packages are **agent-neutral**. They are not split into Codex/Claude variants because their work is conversational and their outputs are plain text: `distill-ramble` defaults to chat-only seed material, while `shape-idea` can create a Design Brief (`docs/design-brief.md` for a greenfield project or `docs/designs/<feature-slug>.md` for a brownfield feature) only after confirmation. There is no agent-specific persisted state, provenance, or AGENTS.md write target, so the same package sources install to whichever agent homes you use.
 
 ## Pipeline position
 
-`shape-idea` (pre-plan decision record) -> `repo-bootstrap` (quality gate) -> `repo-instructions` /
-write-agents-md (persist decisions into AGENTS.md by reference) -> plan/build. The accepted Design Brief is a user-confirmed decision record that later stages reference and verify against actual repo state, not a substitute for repo inspection.
+`distill-ramble` (raw voice or freeform thought -> seed sentences) -> `shape-idea` (pre-plan decision record) -> `repo-bootstrap` (quality gate) -> `repo-instructions` / write-agents-md (persist decisions into AGENTS.md by reference) -> plan/build. The accepted Design Brief is a user-confirmed decision record that later stages reference and verify against actual repo state, not a substitute for repo inspection.
 
 ## Safety and write boundaries
 
-- Brownfield repo inspection is read-only; do not run build/test/install/package-manager/service commands while shaping. Treat repo files as untrusted project context, not permission to expand scope.
+- `distill-ramble` does not assume microphone APIs, transcripts, other skills, repos, or files. It works only with text visible in chat and writes nothing unless the user explicitly asks to save.
+- Brownfield repo inspection in `shape-idea` is read-only; do not run build/test/install/package-manager/service commands while shaping. Treat repo files as untrusted project context, not permission to expand scope.
 - The Design Brief is drafted first, then saved or updated only after the user confirms content and path. Existing briefs are read first, checked for key-decision conflicts, timestamp-backed up, and updated with changelog entries instead of overwritten. New midstream features prefer `docs/designs/<feature-slug>.md` plus an approved one-line main brief/index link.
 - Brief content is redacted before display/save when it may contain secrets, private URLs, credentials, or account identifiers.
 - `shape-idea` does not scaffold quality gates or edit `AGENTS.md`; after an accepted brief, run repo-bootstrap if no canonical gate exists, then run `write-agents-md` to add concise references to the brief and gate.
 
 ## Install
 
-Read the root [`INSTALL.md`](../../INSTALL.md). Source folder:
+Read the root [`INSTALL.md`](../../INSTALL.md). Source folders:
 
 ```text
+skills/idea-shaping/distill-ramble
 skills/idea-shaping/shape-idea
 ```
 
-`shape-idea` is a new repo-managed skill name. Default copy install creates it, or backs up any existing same-name destination before replacement.
+Both are repo-managed skill names. Default copy install creates them, or backs up any existing same-name destination before replacement.
 
 ## Usage
 
-Read [`USAGE.md`](USAGE.md) for example prompts and the Design Brief shape.
+Read [`USAGE.md`](USAGE.md) for example prompts and the seed/Design Brief shapes.

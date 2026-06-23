@@ -6,12 +6,12 @@ This directory contains installable skill packages grouped by skill family.
 
 | Family | Purpose | Variants | Version | Docs |
 |---|---|---|---|---|
-| `idea-shaping` | Shape underspecified product/build ideas into user-confirmed Design Briefs before planning | `shape-idea` | `0.1.8` | [`idea-shaping/README.md`](idea-shaping/README.md), [`idea-shaping/USAGE.md`](idea-shaping/USAGE.md) |
-| `repo-bootstrap` | Bootstrap deterministic, LLM-debuggable repo quality gates before feature work | `codex-init-gate`, `claude-init-gate` | `0.1.8` | [`repo-bootstrap/README.md`](repo-bootstrap/README.md), [`repo-bootstrap/USAGE.md`](repo-bootstrap/USAGE.md) |
-| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.8` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
-| `subagents` | Design and operate repo-specific Codex subagent delegation plans | `design-repo-subagents` | `0.1.8` | [`subagents/README.md`](subagents/README.md), [`subagents/USAGE.md`](subagents/USAGE.md) |
-| `repo-instructions` | Draft/review repo-local AGENTS.md instructions from repo facts | `write-agents-md` | `0.1.8` | [`repo-instructions/README.md`](repo-instructions/README.md), [`repo-instructions/USAGE.md`](repo-instructions/USAGE.md) |
-| `repo-orientation` | Produce a read-only orientation report (stack, entrypoints, commands, layout, prior-session context) for any repo | `orient-repo` | `0.1.8` | [`repo-orientation/README.md`](repo-orientation/README.md), [`repo-orientation/USAGE.md`](repo-orientation/USAGE.md) |
+| `idea-shaping` | Distill raw thoughts into idea seeds, then shape them into user-confirmed Design Briefs before planning | `distill-ramble`, `shape-idea` | `0.1.9` | [`idea-shaping/README.md`](idea-shaping/README.md), [`idea-shaping/USAGE.md`](idea-shaping/USAGE.md) |
+| `repo-bootstrap` | Bootstrap deterministic, LLM-debuggable repo quality gates before feature work | `codex-init-gate`, `claude-init-gate` | `0.1.9` | [`repo-bootstrap/README.md`](repo-bootstrap/README.md), [`repo-bootstrap/USAGE.md`](repo-bootstrap/USAGE.md) |
+| `handoff` | Save/resume repo-local handoff snapshots for clean sessions and optional cross-agent transfer | `codex-handoff`, `claude-handoff` | `0.1.9` | [`handoff/README.md`](handoff/README.md), [`handoff/USAGE.md`](handoff/USAGE.md) |
+| `subagents` | Design and operate repo-specific Codex subagent delegation plans | `design-repo-subagents` | `0.1.9` | [`subagents/README.md`](subagents/README.md), [`subagents/USAGE.md`](subagents/USAGE.md) |
+| `repo-instructions` | Draft/review repo-local AGENTS.md instructions from repo facts | `write-agents-md` | `0.1.9` | [`repo-instructions/README.md`](repo-instructions/README.md), [`repo-instructions/USAGE.md`](repo-instructions/USAGE.md) |
+| `repo-orientation` | Produce a read-only orientation report (stack, entrypoints, commands, layout, prior-session context) for any repo | `orient-repo` | `0.1.9` | [`repo-orientation/README.md`](repo-orientation/README.md), [`repo-orientation/USAGE.md`](repo-orientation/USAGE.md) |
 
 ## Layout Convention
 

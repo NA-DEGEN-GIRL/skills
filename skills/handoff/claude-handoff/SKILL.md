@@ -5,7 +5,7 @@ description: Claude Code-specific workflow for saving and resuming compact repo-
 
 # Claude Handoff
 
-**Skill Version:** 0.1.8
+**Skill Version:** 0.1.9
 
 Use this Claude Code-specific skill to standardize a low-noise `save -> /clear -> resume` workflow. The work snapshot lives in the target repo at `.handoff/latest.md` plus dated backups. This skill folder can be copied or linked into `~/.claude/skills/`, but it does not require patching any installed default `handoff` skill.
 
@@ -136,7 +136,7 @@ Write `.handoff/latest.md` using this format. Omit any section with no content; 
 
 ## Metadata
 - Schema Version: handoff-v1
-- Skill Version: 0.1.8
+- Skill Version: 0.1.9
 - Skill Variant: claude-handoff
 - Scope: <slug>            # optional; omit this line for the default lane
 - Created at: YYYY-MM-DDTHH:MM:SSZ

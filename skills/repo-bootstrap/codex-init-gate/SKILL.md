@@ -5,7 +5,7 @@ description: "Bootstrap a repository's deterministic, LLM-debuggable quality gat
 
 # codex-init-gate
 
-**Skill Version:** 0.1.8
+**Skill Version:** 0.1.9
 
 Use this Codex-specific skill to create or verify a repository's deterministic quality gate before feature work begins. It creates **LLM-debuggable enforcement infrastructure** — reviewed tools, pinned or lockfile-backed config, a runnable `make check`, and explicit code-structure guidance — not project narrative. It is a quality-gate bootstrap, not a general `git init` replacement.
 

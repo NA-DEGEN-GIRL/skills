@@ -1,8 +1,27 @@
 # Idea Shaping Skill Usage Examples
 
-This guide shows how to use the installed `shape-idea` skill. It runs *before* planning: it
-asks, translates technical forks, and converges on a user-confirmed Design Brief draft. It does not write
-code, scaffold files, or lay out implementation steps.
+This guide shows how to use the idea-shaping family. Use `distill-ramble` when the thought is still voice-like and messy; use `shape-idea` when there is already enough of an idea to start making explicit decisions.
+
+## Distill a voice ramble into seed sentences
+
+```text
+use distill-ramble
+마이크로 그냥 떠오르는 대로 말할게. 중간중간 질문하면서 핵심 문장으로 정리해줘.
+```
+
+```text
+use distill-ramble
+I want to talk through a messy idea. Don't make a plan yet; help me find the core sentences.
+```
+
+Expected behavior: the agent invites free talk, responds in short 2–3 sentence turns, asks one useful question at a time, and avoids forms, MVP checklists, Design Briefs, or implementation plans. When you say “정리해줘”, “여기까지”, or “make this into seeds”, it produces:
+
+- **Core thread** — 1–2 sentences capturing the main through-line.
+- **Seed sentences** — 3–7 rough copyable sentences or phrases.
+- **Open knots** — unresolved tensions/questions.
+- **Set aside for now** — optional tangents/noise.
+
+By default it writes nothing; if you explicitly ask to save, it writes one Markdown distillation file after confirming any overwrite.
 
 ## Start shaping an idea
 
@@ -32,11 +51,10 @@ The skill orients on the real repo first (using `orient-repo` if available) with
 
 ## Output: the Design Brief
 
-When the idea is solid, the skill drafts a single living document, redacts sensitive-looking values, and asks before saving it (default
+The output is a user-confirmed Design Brief. When the idea is solid, the skill drafts a single living document, redacts sensitive-looking values, and asks before saving it (default
 `docs/design-brief.md` for greenfield, or `docs/designs/<feature-slug>.md` for brownfield features) with: problem/why, success + **testable acceptance criteria**, in/out
 scope, constraints, key decisions (chose X over Y, Z because…), open risks, and a changelog.
 It does not edit `AGENTS.md` or set up gates — run repo-bootstrap next if the repo lacks a canonical gate, then run `write-agents-md` so AGENTS.md can reference the accepted brief and gate without embedding full reasoning.
-
 
 ## Add a new idea mid-project
 
@@ -58,13 +76,15 @@ Expected behavior: the agent reads the existing brief first, proposes a focused 
 
 ## Recommended end-to-end flow
 
-1. `shape-idea` — draft and accept the Design Brief.
-2. `codex-init-gate` / `claude-init-gate` — if no canonical quality gate exists, set one up before feature work.
-3. `write-agents-md` — reference the accepted brief and canonical gate in AGENTS.md without embedding full reasoning.
-4. Plan/build — sequence implementation after decisions and gate are known.
+1. `distill-ramble` — optional: convert raw voice/freeform thought into seed sentences.
+2. `shape-idea` — draft and accept the Design Brief.
+3. `codex-init-gate` / `claude-init-gate` — if no canonical quality gate exists, set one up before feature work.
+4. `write-agents-md` — reference the accepted brief and canonical gate in AGENTS.md without embedding full reasoning.
+5. Plan/build — sequence implementation after decisions and gate are known.
 
 ## Good prompt hints
 
-- A one-liner is enough to start ("X 만들고 싶어"); the skill pulls the rest out by asking.
-- Say "그만, 이대로 plan으로 가자" anytime to stop early and get a brief with whatever is settled.
-- For high-stakes decisions, ask it to "사전 부검 한 번 돌려줘" (pre-mortem) to surface weaknesses.
+- If the thought is messy, start with `distill-ramble` and say “마이크로 떠드는 걸 seed 문장으로 정리해줘.”
+- If the idea is already clear enough to make decisions, start directly with `shape-idea`.
+- Say “그만, 이대로 plan으로 가자” anytime to stop `shape-idea` early and get a brief with whatever is settled.
+- For high-stakes decisions, ask `shape-idea` to “사전 부검 한 번 돌려줘” (pre-mortem) to surface weaknesses.
