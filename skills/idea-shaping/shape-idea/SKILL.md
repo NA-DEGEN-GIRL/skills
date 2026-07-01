@@ -5,7 +5,7 @@ description: 'Shape an underspecified product/build/feature idea into a user-con
 
 # Shape Idea
 
-**Skill Version:** 0.1.9
+**Skill Version:** 0.1.10
 
 Use this skill to turn a vague build idea into a **user-confirmed Design Brief** before planning or coding, or to decide how a new idea fits an in-progress project before implementation. The brief records what/why, consequential tradeoffs, rejected alternatives, risks, and testable acceptance criteria so later planning has a decision record instead of a guess.
 

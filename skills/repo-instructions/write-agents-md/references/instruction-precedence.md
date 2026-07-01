@@ -4,8 +4,8 @@ Use this when repo instruction files overlap or conflict.
 
 ## Precedence For Current Work
 
-1. Current user request.
-2. System/developer instructions from the active agent runtime.
+1. System/developer instructions from the active agent runtime.
+2. Current user request, within those higher-priority constraints.
 3. Nearest applicable nested `AGENTS.md` for the target path.
 4. Root `AGENTS.md`.
 5. Agent-specific repo files such as `CODEX.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursorrules`, `.cursor/rules/`, or `.windsurfrules` when they apply to the current agent/tooling.
@@ -19,6 +19,7 @@ If instructions conflict, do not silently merge them. Preserve higher-precedence
 - Do not copy all of `CODEX.md`, `CLAUDE.md`, or sibling tool rule files into `AGENTS.md` by default.
 - Move only repo-wide, agent-compatible rules into `AGENTS.md`.
 - Leave agent-specific workflow details in their agent-specific files unless the user asks to consolidate.
+- For consolidation requests, choose and report one disposition for each source file: delete it, preserve it as-is, edit it to remove migrated rules while keeping agent-specific content, or replace it with a thin pointer to `AGENTS.md`. Do not leave duplicate conflicting sources unexplained.
 - If `AGENTS.md` and an agent-specific file disagree, mention the conflict and prefer the file that applies to the current task scope.
 
 ## Existing Content

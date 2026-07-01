@@ -5,7 +5,7 @@ description: Distill messy spoken or typed thinking into clear idea seed sentenc
 
 # Distill Ramble
 
-**Skill Version:** 0.1.9
+**Skill Version:** 0.1.10
 
 Use this skill to help a user talk through a fuzzy idea conversationally and end with a small set of clear seed sentences. It is a pre-structure thinking companion: listen first, reflect lightly, ask short questions, then compress the conversation into usable idea seeds.
 

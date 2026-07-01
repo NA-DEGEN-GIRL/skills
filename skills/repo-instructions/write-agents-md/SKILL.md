@@ -5,7 +5,7 @@ description: Inspect a repository and draft, review, or update AGENTS.md with co
 
 # Write AGENTS.md
 
-**Skill Version:** 0.1.9
+**Skill Version:** 0.1.10
 
 Use this skill to produce practical repo-local instructions grounded in the actual project. Keep `AGENTS.md` concise, operational, and specific enough that a coding agent can work safely without re-learning the repo each turn.
 
@@ -35,9 +35,9 @@ Default final user-facing responses should be in Korean. Keep generated `AGENTS.
 3. Infer commands and conventions.
    - Include commands only when supported by manifests, CI, Makefiles, scripts, docs that match the repo, or safe local execution.
    - Prefer static evidence over executing commands. Running no command and marking it `unverified` is always better than running a risky command.
-   - Without explicit user approval, run only read-only checks such as `--help`, `--version`, `--dry-run`, task listing, or existing validation commands known to be safe in this repo.
+   - Without explicit user approval, run only read-only checks such as `--help`, `--version`, `--dry-run`, task listing, or existing validation commands whose command body you inspected and confirmed is check-only.
    - Before running install/build/service/network/credential/state-changing commands, read the command definition first and ask for approval if risk remains.
-   - Mark uncertain commands as unverified unless you ran them safely and successfully.
+   - Mark uncertain commands as unverified unless you ran them safely and successfully; include a concrete safe verification method for each unverified item when one is discoverable.
    - Do not include old README commands if manifests/CI contradict them.
 4. Decide root vs nested instructions.
    - Root `AGENTS.md` is the default.
@@ -45,7 +45,10 @@ Default final user-facing responses should be in Korean. Keep generated `AGENTS.
    - Use nested instructions only for materially different commands, ownership, generated-file rules, or safety constraints.
 5. Draft, review, or patch.
    - If the user asked only for a draft or review, do not edit files.
-   - If the user asked to create or update, edit only the requested `AGENTS.md` scope and keep unrelated files untouched.
+   - If this is review-only and no `AGENTS.md` exists in the requested scope, report that clearly and suggest draft/create next steps instead of writing a file.
+   - If the user asked to create or update, edit only the requested `AGENTS.md` scope and, for explicit consolidation requests, the relevant source instruction files; keep unrelated files untouched.
+   - For updates, prefer the smallest correct diff that fixes stale, conflicting, unsafe, or missing guidance; do not regenerate a good existing file just because a template exists.
+   - For consolidation requests such as moving `CODEX.md` or `CLAUDE.md` guidance into `AGENTS.md`, state what happened to each source file: deleted, preserved as-is, edited to drop migrated rules while keeping agent-specific content, or kept as a thin pointer to `AGENTS.md`.
    - If multiple scopes are plausible, choose root by default unless the user's target path is clearly under a nested scope.
 6. Verify the result.
    - Read the final file.
@@ -83,6 +86,7 @@ For a review-only request, return:
 - **Findings**: correctness, usefulness, privacy/safety issues.
 - **Suggested Patch**: concise replacement text or focused diff guidance.
 - **Unverified Items**: commands or conventions that need local confirmation.
+- If no `AGENTS.md` exists, say so explicitly and provide draft/create guidance rather than treating the review as clean.
 
 For a create/update request, return:
 
@@ -90,6 +94,8 @@ For a create/update request, return:
 - key repo facts used
 - commands/checks run or why not run
 - any unverified commands kept in the document
+- safe verification methods for unverified commands or conventions, when discoverable
+- source instruction files deleted, edited, preserved, or converted to pointers during consolidation
 - remaining risks or follow-ups
 
 ## References
