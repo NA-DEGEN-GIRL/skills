@@ -2,7 +2,7 @@
 
 ## What This Is
 
-This repository is a local workspace for portable agent tooling. Skill packages remain its current installable contents, and `mcp-servers/` provides a separate package boundary for MCP servers that may be brought into the same repository later.
+This repository is a local workspace for portable agent tooling. It contains installable skill packages plus independently versioned MCP servers under `mcp-servers/`.
 
 Current included families:
 
@@ -16,7 +16,7 @@ Current included families:
 - `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 - `skills/repo-orientation/orient-repo` — agent-neutral, read-only repo orientation package (installed to both `~/.codex` and `~/.claude`).
 
-The MCP catalog currently has no local server entries. `llm-router-mcp` remains a standalone repository until its history is deliberately imported under `mcp-servers/llm-router-mcp/`, its native tests pass, and configured clients have been cut over. Do not create that destination as a placeholder before a subtree-style import.
+The MCP catalog registers `mcp-servers/llm-router-mcp`, imported with its standalone Git history. New source changes belong in this monorepo. The previous standalone repository and existing client paths remain temporary rollback state until a separately reviewed client cutover and smoke test are complete.
 
 The user asked to keep these local, agent-specific where needed, and not patch installed global skills directly. The current version is `0.1.11`. For idea-shaping, the primary intended use is pre-plan or midstream clarification: first optionally distill raw voice/freeform thought into seed sentences, then decide what/why, translate consequential technical forks, check new feature ideas against existing key decisions, and draft an accepted Design Brief without coding, scaffolding, running repo commands, or editing AGENTS.md. For repo-bootstrap, the primary intended use is gate-first initialization for LLM-debuggable codebases: a reviewed check-only canonical runner (`make check` only when Make is selected), enforceable structure checks where tooling supports them, plus optional pre-commit/CI after approval; it is not general `git init`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and operation under the active runtime's delegation policy. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
 
@@ -49,7 +49,14 @@ The user asked to keep these local, agent-specific where needed, and not patch i
 - MCP source path: `mcp-servers/<server-name>/`, registered independently in `mcp-servers/catalog.json`.
 - Each MCP owns its native manifest, lockfile, semantic version, runtime dependencies, tests, and release tags. Do not couple it to root `VERSION`.
 - Keep credentials, rendered client configuration, provider authentication, runtime state, and machine-specific paths outside the repository.
-- During migration, keep the standalone repository intact until import and client cutover are verified; afterward choose one writable canonical source rather than syncing two copies.
+- During migration, keep the standalone repository intact until client cutover is verified, but make source changes only in this monorepo rather than syncing two writable copies.
+
+## MCP Server Notes
+
+- `mcp-servers/llm-router-mcp` is a local stdio Node server that routes requests to Codex, Claude, Grok, and Antigravity CLIs through persistent `tmux` sessions or headless calls.
+- Its `package.json` owns package version, Node engine, executable, dependency, and native test metadata; root `VERSION` does not apply.
+- `make setup-mcps` performs locked dependency setup. `make check-mcps` is check-only and runs native tests. `make check`/`make all` aggregate skill and MCP checks.
+- Runtime state remains outside the checkout by default and may contain private prompts and responses. Never commit it or rendered user client configuration.
 
 ## Idea Shaping Notes
 
@@ -145,9 +152,12 @@ make all
 ## Validation Commands
 
 ```bash
-make all
+make setup-mcps  # after clone or MCP lockfile changes
+make check       # complete check-only gate
 
 # Individual examples:
+make check-skills
+make check-mcps
 python3 skills/handoff/codex-handoff/scripts/handoff_snapshot.py --root .
 python3 skills/handoff/codex-handoff/scripts/validate_snapshot.py .handoff/latest.md
 python3 skills/handoff/codex-handoff/scripts/select_snapshot.py --root .

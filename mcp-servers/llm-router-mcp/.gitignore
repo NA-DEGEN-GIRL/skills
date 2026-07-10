@@ -12,11 +12,11 @@ node_modules/
 Thumbs.db
 
 # Runtime artifacts are written outside the repo by default, but keep this
-# ignored in case LLM_ROUTER_MCP_STATE_DIR is pointed at the project.
-.local/
-state/
-inputs/
-requests/
-responses/
-workdirs/
-.antigravitycli/
+# ignored in case LLM_ROUTER_MCP_STATE_DIR is pointed at this package directory.
+/.local/
+/state/
+/inputs/
+/requests/
+/responses/
+/workdirs/
+/.antigravitycli/

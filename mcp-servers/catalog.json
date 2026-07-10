@@ -1,4 +1,11 @@
 {
   "schema_version": 1,
-  "servers": []
+  "servers": [
+    {
+      "name": "llm-router-mcp",
+      "source": "mcp-servers/llm-router-mcp",
+      "runtime": "node",
+      "transport": "stdio"
+    }
+  ]
 }

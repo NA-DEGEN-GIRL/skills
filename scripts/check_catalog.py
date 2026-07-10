@@ -166,7 +166,37 @@ def main() -> int:
         failed |= check("contents: read" in workflow_text, "CI uses read-only contents permission")
         failed |= check("runs-on: ubuntu-24.04" in workflow_text and "ubuntu-latest" not in workflow_text, "CI runner image is pinned")
         failed |= check('python-version: ["3.10", "3.14"]' in workflow_text, "CI tests minimum and current Python lines")
-        failed |= check("run: make all" in workflow_text, "CI runs the canonical gate")
+        failed |= check('node-version: ["20", "22", "24"]' in workflow_text, "CI tests declared and current Node lines")
+        failed |= check(
+            "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" in workflow_text,
+            "CI pins setup-node v6.4.0",
+        )
+        failed |= check("apt-get install --yes --no-install-recommends tmux" in workflow_text, "CI installs the MCP tmux prerequisite")
+        required_make_runs = {
+            "run: make check-skills",
+            "run: make setup-mcps",
+            "run: make check-mcps",
+        }
+        workflow_lines = {line.strip() for line in workflow_text.splitlines()}
+        failed |= check(
+            required_make_runs.issubset(workflow_lines),
+            "CI runs the separated skill check and MCP setup/check targets",
+        )
+
+    makefile = ROOT / "Makefile"
+    failed |= check(makefile.is_file(), "canonical Makefile exists")
+    if makefile.is_file():
+        makefile_text = read(makefile)
+        failed |= check(bool(re.search(r"^all:\s+check\s*$", makefile_text, flags=re.M)), "make all aliases the canonical check gate")
+        failed |= check(
+            bool(re.search(r"^check:\s+check-skills\s+check-mcps\s*$", makefile_text, flags=re.M)),
+            "canonical check aggregates skill and MCP gates",
+        )
+        failed |= check("ci --ignore-scripts" in makefile_text, "MCP setup uses locked npm ci without lifecycle scripts")
+        failed |= check(
+            bool(re.search(r"^check-mcps:\s*$", makefile_text, flags=re.M)),
+            "MCP check does not depend on mutating setup",
+        )
     return 1 if failed else 0
 
 

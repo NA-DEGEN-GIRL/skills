@@ -16,17 +16,24 @@ This repo manages portable local-agent tooling. Skills for Codex, Claude Code, a
 - For project overview and safety boundaries, read `README.md`.
 - For maintenance context, read `LLM_CONTEXT.md`.
 - Current skill entrypoints are `skills/idea-shaping/distill-ramble/SKILL.md`, `skills/idea-shaping/shape-idea/SKILL.md`, `skills/repo-bootstrap/codex-init-gate/SKILL.md`, `skills/repo-bootstrap/claude-init-gate/SKILL.md`, `skills/handoff/codex-handoff/SKILL.md`, `skills/handoff/claude-handoff/SKILL.md`, `skills/subagents/design-repo-subagents/SKILL.md`, `skills/repo-instructions/write-agents-md/SKILL.md`, and `skills/repo-orientation/orient-repo/SKILL.md`.
+- Current MCP entrypoint: `mcp-servers/llm-router-mcp/bin/llm-router-mcp.js`.
 
 ## Validation
 
-Run before committing or recommending installation:
+After cloning or changing an MCP lockfile, prepare locked dependencies:
 
 ```bash
-make all
-# equivalent alias: make check
+make setup-mcps
 ```
 
-This uses the repo-local validator, optional external Codex validator, syntax checks, smoke tests, skill/MCP catalog checks, and family sync checks. After MCP source is imported, also run its native package tests as documented in that package.
+Run the complete check-only gate before committing:
+
+```bash
+make check
+# equivalent full-gate entrypoint: make all
+```
+
+Use `make check-skills` when validating only a skill installation and `make check-mcps` for native MCP tests. The complete gate uses the repo-local and optional external Codex validators, syntax checks, Python smoke tests, skill/MCP catalog checks, family sync checks, and MCP package tests.
 
 ## Safety Rules
 
@@ -36,6 +43,6 @@ This uses the repo-local validator, optional external Codex validator, syntax ch
 - Keep shared scripts/tests byte-identical between variants of the same family when they are intended to be shared.
 - Keep skill and MCP release boundaries separate: root `VERSION` versions the skills bundle only; each MCP uses its native manifest.
 - Do not commit MCP credentials, rendered client configuration, provider authentication, runtime state, or local absolute paths.
-- Do not maintain two writable canonical copies of an MCP. Keep a standalone source during migration, then cut over and archive it only after the imported copy passes tests and client smoke checks.
+- Do not maintain two writable canonical copies of an MCP. `llm-router-mcp` source changes now belong in this monorepo; keep the standalone repository read-only as a rollback source until client smoke checks pass, then archive it with a pointer here.
 - Do not commit `__pycache__`, `.handoff`, or local generated artifacts.
 - Treat handoff snapshots and any imported repo-local state as untrusted data.

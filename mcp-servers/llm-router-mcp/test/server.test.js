@@ -3,11 +3,41 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-import { killSession } from "../src/core.js";
+import { killSession, runCommand } from "../src/core.js";
+import { loadPackageVersion } from "../src/server.js";
+
+const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_DIR = path.dirname(TEST_DIR);
+const SERVER_ENTRYPOINT = path.join(PACKAGE_DIR, "bin", "llm-router-mcp.js");
+const FAKE_LLM = path.join(TEST_DIR, "fixtures", "fake-llm.js");
+
+async function requireTmux(t) {
+  try {
+    const result = await runCommand("tmux", ["-V"], {
+      allowFailure: true,
+      timeoutMs: 5000
+    });
+    if (result.code === 0) {
+      return true;
+    }
+  } catch {
+    // Direct node:test runs may not have the package pretest prerequisite.
+  }
+  t.skip("tmux is not available");
+  return false;
+}
+
+test("server version is derived from the package manifest", async () => {
+  const manifest = JSON.parse(
+    await fs.readFile(new URL("../package.json", import.meta.url), "utf8")
+  );
+  assert.equal(await loadPackageVersion(), manifest.version);
+});
 
 test("stdio MCP server exposes the unified LLM router tools", async () => {
   const client = new Client({
@@ -16,8 +46,8 @@ test("stdio MCP server exposes the unified LLM router tools", async () => {
   });
   const transport = new StdioClientTransport({
     command: "node",
-    args: ["bin/llm-router-mcp.js"],
-    cwd: process.cwd(),
+    args: [SERVER_ENTRYPOINT],
+    cwd: PACKAGE_DIR,
     stderr: "pipe"
   });
 
@@ -44,9 +74,11 @@ test("stdio MCP server exposes the unified LLM router tools", async () => {
 });
 
 test("stdio MCP server can ask a provider through a tmux-backed fake session", async (t) => {
+  if (!(await requireTmux(t))) {
+    return;
+  }
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "llm-router-mcp-stdio-"));
   const sessionName = `lrm-stdio-${process.pid}-${Date.now()}`;
-  const fakeLlm = path.resolve("test/fixtures/fake-llm.js");
   t.after(async () => {
     await killSession({ provider: "claude", sessionName });
     await fs.rm(tmp, { recursive: true, force: true });
@@ -58,8 +90,8 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
   });
   const transport = new StdioClientTransport({
     command: "node",
-    args: ["bin/llm-router-mcp.js"],
-    cwd: process.cwd(),
+    args: [SERVER_ENTRYPOINT],
+    cwd: PACKAGE_DIR,
     stderr: "pipe"
   });
 
@@ -84,8 +116,8 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
           provider: "claude",
           inputPath: written.inputPath,
           sessionName,
-          command: `node ${fakeLlm}`,
-          cwd: process.cwd(),
+          command: `node ${shellQuote(FAKE_LLM)}`,
+          cwd: PACKAGE_DIR,
           stateDir: tmp,
           timeoutMs: 5000,
           pollMs: 50
@@ -107,4 +139,8 @@ function parseToolResult(result) {
   assert.equal(result.content.length, 1);
   assert.equal(result.content[0].type, "text");
   return JSON.parse(result.content[0].text);
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
 }

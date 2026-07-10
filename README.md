@@ -1,6 +1,6 @@
 # Agent Toolkit
 
-This repository manages portable local-agent tooling in one place while keeping each tool type independently installable and testable. It currently ships skill packages for Codex and Claude Code, and it includes the repository contract for adding locally managed MCP servers without mixing their manifests, versions, or runtime state into the skills bundle.
+This repository manages portable local-agent tooling in one place while keeping each tool type independently installable and testable. It ships skill packages for Codex and Claude Code plus the local `llm-router-mcp` server, without mixing MCP manifests, versions, dependencies, or runtime state into the skills bundle.
 
 - Skills live under [`skills/`](skills/README.md) and use [`skills/catalog.json`](skills/catalog.json).
 - MCP servers live under [`mcp-servers/`](mcp-servers/README.md) and use [`mcp-servers/catalog.json`](mcp-servers/catalog.json).
@@ -24,6 +24,12 @@ This repository manages portable local-agent tooling in one place while keeping 
 
 각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `idea-shaping`은 raw voice or freeform thought를 seed 문장으로 정리한 뒤 계획 전 결정/이유를 Design Brief로 구체화하는 용도이고, `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이며, `handoff`는 같은 agent 내 맥락 위생이 주 용도입니다. `distill-ramble`, `shape-idea`, `orient-repo`는 Codex·Claude 공용입니다.
 
+## MCP servers at a glance
+
+| 서버 | transport/runtime | 무엇을 하나 | 문서 |
+|---|---|---|---|
+| `llm-router-mcp` | stdio / Node.js | Codex, Claude, Grok, Antigravity CLI를 persistent `tmux` session 또는 headless one-shot으로 호출 | [`mcp-servers/llm-router-mcp/README.md`](mcp-servers/llm-router-mcp/README.md) |
+
 Current repository version: `0.1.11` for the skills bundle. The root `VERSION` intentionally applies only to skill packages; each MCP server owns its version in its native package manifest.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
@@ -46,7 +52,8 @@ agent-toolkit/
 ├── mcp-servers/
 │   ├── README.md           # MCP package and migration contract
 │   ├── AGENTS.md           # nested MCP maintenance instructions
-│   └── catalog.json        # MCP registry; empty until source is imported
+│   ├── catalog.json        # MCP package registry
+│   └── llm-router-mcp/     # independently versioned Node stdio MCP server
 └── skills/
     ├── README.md           # skills/family index
     ├── catalog.json        # package/target registry
@@ -98,7 +105,7 @@ Rules:
 3. The package folder name must match `SKILL.md` frontmatter `name`.
 4. Put shared repo tooling in root `scripts/`; put skill-runtime scripts inside the package `scripts/` folder.
 5. Register every package and supported agent in `skills/catalog.json`.
-6. A skill package is discovered only at `skills/<family>/<skill-name>/SKILL.md`. Run `make all` before committing or recommending installation.
+6. A skill package is discovered only at `skills/<family>/<skill-name>/SKILL.md`. Run `make check-skills` before committing or recommending a skill installation.
 
 ## MCP Server Layout Contract
 
@@ -108,7 +115,7 @@ Locally managed MCP servers live under:
 mcp-servers/<server-name>/
 ```
 
-Each server keeps its own manifest, lockfile, version, tests, and release lifecycle. Register only source that is actually present in this repository; until an MCP has been imported, `mcp-servers/catalog.json` remains empty. Do not commit client credentials, rendered user configuration, provider authentication, or runtime state. See [`mcp-servers/README.md`](mcp-servers/README.md) for the import and maintenance contract.
+Each server keeps its own manifest, lockfile, version, tests, and release lifecycle. `mcp-servers/catalog.json` currently registers `llm-router-mcp`; its package manifest is the version and executable source of truth. Do not commit client credentials, rendered user configuration, provider authentication, or runtime state. See [`mcp-servers/README.md`](mcp-servers/README.md) for the package and migration contract.
 
 ## Current Skill Families
 
@@ -199,6 +206,7 @@ This package is intentionally **unified and agent-neutral**: because orientation
 - `skills/repo-instructions/scripts/check_repo_instructions_sync.py`: verifies instruction-precedence, safe-write, review, and nested-scope references.
 - `skills/repo-orientation/scripts/check_repo_orientation_sync.py`: verifies read-only quality-gate, decision-doc, handoff-selection, and confidence-reporting coverage.
 - `scripts/check_catalog.py`: checks exact package layout, catalog registration, target agents, versions, metadata, and root-document registration.
+- `scripts/check_mcp_catalog.py`: checks MCP discovery/catalog parity, direct-child source containment, native manifest/lock metadata, and safe in-package entrypoints.
 - `scripts/test_install_skill.py`: exercises dry-run/apply, external backup, copy/symlink replacement, duplicate detection, and rollback in isolated temporary homes.
 - `evals/scenarios.json` plus `scripts/check_evals.py`: registers high-risk forward-test prompts and expected/forbidden behavior for every package.
 
@@ -211,12 +219,13 @@ This package is intentionally **unified and agent-neutral**: because orientation
 - Secret protection is path/metadata-oriented in the probe; it is not a full content scanner.
 - `.handoff/` is treated as local scratch by default; do not edit `.gitignore` or `.git/info/exclude` unless explicitly requested.
 - Installed-skill backups belong outside the agent's `skills/` discovery directory; adjacent backup bundles can be rediscovered and create ambiguous routing.
+- `llm-router-mcp` is a local trusted-client server that runs provider CLIs with the same OS account privileges as its MCP client. Keep its state outside the checkout and review any client configuration change before applying it.
 
 ## Install
 
 Use [`INSTALL.md`](INSTALL.md) for skills. The canonical `scripts/install_skill.py` workflow is dry-run by default, validates the package, and keeps timestamped backups under the agent home but outside `skills/`. Do **not** replace a default `handoff` skill unless the user explicitly asks.
 
-MCP servers do not use the skill installer. No MCP source has been imported yet; the standalone `llm-router-mcp` repository remains the active source until a separately reviewed history import and client cutover are complete.
+MCP servers do not use the skill installer. Prepare their locked dependencies with `make setup-mcps`, then run `make check-mcps`; follow each package README for client configuration. The previous standalone `llm-router-mcp` repository remains a temporary rollback source until client cutover is verified, but new source changes belong here.
 
 If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. During trials, explicitly name the desired skill in prompts:
 
@@ -233,14 +242,21 @@ For deterministic routing, validate first, then intentionally replace/rename the
 
 Repository scripts require Python 3.10 or newer. CI exercises the minimum supported line (3.10) and the current stable line (3.14) on the Linux/POSIX automation baseline. Native Windows execution of the full repo and handoff script suite is not currently release-gated.
 
-From this repo, `make all` and `make check` are equivalent:
+On a fresh clone, install locked MCP dependencies once and run the complete check-only gate:
 
 ```bash
-make all
-# or: make check
+make setup-mcps
+make check
+# equivalent full-gate entrypoint: make all
 ```
 
-This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, installer/runtime smoke tests, skill and MCP catalog validation, and family sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution. MCP runtime tests remain package-specific and must be wired into the gate when source is imported.
+`make check-skills` runs the portable skill validators, Python syntax/smoke tests, both catalogs, and family sync checks without installing Node dependencies. `make check-mcps` runs each MCP package's native tests without changing dependencies. `make check` and `make all` aggregate both gates; setup remains separate so validation itself is check-only. `PYTHONDONTWRITEBYTECODE=1` avoids `__pycache__` pollution.
+
+## Current MCP Entrypoint
+
+```text
+mcp-servers/llm-router-mcp/bin/llm-router-mcp.js
+```
 
 ## Current Skill Entrypoints
 

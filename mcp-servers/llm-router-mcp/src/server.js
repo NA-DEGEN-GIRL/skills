@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import fs from "node:fs/promises";
 import { z } from "zod";
 
 import {
@@ -42,9 +43,10 @@ const optionalCommon = {
 };
 
 export async function main() {
+  const version = await loadPackageVersion();
   const server = new McpServer({
     name: "llm-router-mcp",
-    version: "0.1.0"
+    version
   });
 
   server.registerTool(
@@ -275,6 +277,15 @@ export async function main() {
   );
 
   await server.connect(new StdioServerTransport());
+}
+
+export async function loadPackageVersion() {
+  const manifestUrl = new URL("../package.json", import.meta.url);
+  const manifest = JSON.parse(await fs.readFile(manifestUrl, "utf8"));
+  if (typeof manifest.version !== "string" || manifest.version.trim() === "") {
+    throw new Error("llm-router-mcp package.json must declare a non-empty version");
+  }
+  return manifest.version;
 }
 
 function jsonContent(value) {

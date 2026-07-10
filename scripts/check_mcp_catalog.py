@@ -7,6 +7,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -22,6 +23,9 @@ SEMVER_RE = re.compile(
     r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
     r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
 )
+GIT_TIMEOUT_SECONDS = 5
+MAX_GIT_OUTPUT_BYTES = 8 * 1024 * 1024
+MAX_TRACKED_PATHS = 100_000
 
 
 def check(condition: bool, message: str) -> bool:
@@ -78,24 +82,98 @@ def contained_real_file(source: Path, relative: PurePosixPath) -> bool:
     return True
 
 
-def forbidden_package_entries(source: Path) -> list[Path]:
-    """Find generated or potentially sensitive paths that must not ship."""
-    forbidden: list[Path] = []
-    for dirpath, dirnames, filenames in os.walk(source, followlinks=False):
-        base = Path(dirpath)
-        for name in list(dirnames):
-            lowered = name.lower()
+def git_tracked_paths(root: Path) -> tuple[set[PurePosixPath], str | None]:
+    """Return bounded, NUL-delimited tracked paths under mcp-servers."""
+    env = os.environ.copy()
+    for name in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_COMMON_DIR",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    ):
+        env.pop(name, None)
+    env.update(
+        {
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_PAGER": "cat",
+            "PAGER": "cat",
+        }
+    )
+    command = [
+        "git",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.untrackedCache=false",
+        "-C",
+        str(root),
+        "ls-files",
+        "-z",
+        "--",
+        "mcp-servers",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+        )
+    except FileNotFoundError:
+        return set(), "git executable was not found"
+    except subprocess.TimeoutExpired:
+        return set(), f"git ls-files exceeded {GIT_TIMEOUT_SECONDS}s"
+    except OSError as exc:
+        return set(), f"git ls-files could not start: {exc}"
+    if result.returncode != 0:
+        return set(), f"git ls-files exited {result.returncode}"
+    if len(result.stdout) > MAX_GIT_OUTPUT_BYTES:
+        return set(), f"git ls-files output exceeded {MAX_GIT_OUTPUT_BYTES} bytes"
+
+    raw_paths = result.stdout.split(b"\0")
+    if raw_paths and raw_paths[-1] == b"":
+        raw_paths.pop()
+    if len(raw_paths) > MAX_TRACKED_PATHS:
+        return set(), f"git ls-files returned more than {MAX_TRACKED_PATHS} paths"
+
+    tracked: set[PurePosixPath] = set()
+    for raw_path in raw_paths:
+        if not raw_path:
+            return set(), "git ls-files returned an empty path"
+        path = PurePosixPath(os.fsdecode(raw_path))
+        if path.is_absolute() or ".." in path.parts:
+            return set(), "git ls-files returned an unsafe path"
+        tracked.add(path)
+    return tracked, None
+
+
+def forbidden_tracked_package_entries(
+    source: Path,
+    source_rel: PurePosixPath,
+    tracked_paths: set[PurePosixPath],
+) -> list[Path]:
+    """Find tracked generated or potentially sensitive package paths."""
+    forbidden: set[Path] = set()
+    for tracked in tracked_paths:
+        try:
+            relative = tracked.relative_to(source_rel)
+        except ValueError:
+            continue
+        current = source
+        for part in relative.parts:
+            current /= part
+            lowered = part.lower()
             is_env = lowered == ".env" or lowered.startswith(".env.")
-            if name == "node_modules" or (
+            if part == "node_modules" or (
                 is_env and not lowered.endswith(".example")
             ) or lowered.endswith(".log"):
-                forbidden.append(base / name)
-                dirnames.remove(name)
-        for name in filenames:
-            lowered = name.lower()
-            is_env = lowered == ".env" or lowered.startswith(".env.")
-            if (is_env and not lowered.endswith(".example")) or lowered.endswith(".log"):
-                forbidden.append(base / name)
+                forbidden.add(current)
+                break
     return sorted(forbidden)
 
 
@@ -207,6 +285,11 @@ def validate(root: Path, catalog_path: Path) -> int:
     if not is_real_file(catalog_path):
         return 1
 
+    tracked_paths, git_error = git_tracked_paths(root)
+    failed |= check(git_error is None, "Git tracked-file inspection succeeds")
+    if git_error is not None:
+        print(f"  GIT ERROR {git_error}")
+
     try:
         catalog = load_json(catalog_path)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -287,10 +370,15 @@ def validate(root: Path, catalog_path: Path) -> int:
         failed |= check(contained, f"{name} source is contained directly in mcp-servers")
         if not contained:
             continue
-        forbidden = forbidden_package_entries(source)
+        source_path = PurePosixPath(source_rel)
+        forbidden = forbidden_tracked_package_entries(
+            source,
+            source_path,
+            tracked_paths,
+        )
         failed |= check(
             not forbidden,
-            f"{name} contains no node_modules, private env files, or logs",
+            f"{name} tracks no node_modules, private env files, or logs",
         )
         for path in forbidden:
             print(f"  FORBIDDEN {source_rel}/{path.relative_to(source)}")

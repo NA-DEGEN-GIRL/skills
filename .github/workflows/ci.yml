@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: Python ${{ matrix.python-version }}
+  skills:
+    name: Skills / Python ${{ matrix.python-version }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
@@ -29,7 +29,38 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run canonical quality gate
+      - name: Run skill and Python quality gate
         env:
           PYTHONDONTWRITEBYTECODE: "1"
-        run: make all
+        run: make check-skills
+
+  mcps:
+    name: MCPs / Node ${{ matrix.node-version }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "22", "24"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: mcp-servers/llm-router-mcp/package-lock.json
+      - name: Install tmux
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends tmux
+          tmux -V
+      - name: Install locked MCP dependencies
+        run: make setup-mcps
+      - name: Run check-only MCP gate
+        env:
+          CI: "1"
+        run: make check-mcps

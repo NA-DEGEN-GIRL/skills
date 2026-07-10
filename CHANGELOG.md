@@ -8,7 +8,9 @@ This file summarizes repository releases. Installable package folders remain foc
 
 - Expanded the repository contract from skills-only packaging to a broader local-agent toolkit while preserving the existing `skills/` layout and installer behavior.
 - Added a separate `mcp-servers/` catalog and nested maintenance rules so MCP manifests, versions, tests, credentials, and runtime state remain isolated from the skills bundle.
-- Added MCP catalog validation to the existing `make all` gate without importing or changing the standalone `llm-router-mcp` source yet.
+- Imported the standalone `llm-router-mcp` Git history under `mcp-servers/llm-router-mcp`, registered it in the MCP catalog, and made this monorepo its source of truth while retaining the old checkout temporarily for client rollback.
+- Added MCP catalog/manifest validation, locked dependency setup, native Node/tmux tests, and pinned Node CI alongside the existing skill gate.
+- Updated `llm-router-mcp` to `0.1.1` with monorepo metadata, manifest-derived server versioning, cwd-independent tests, explicit tmux preflight, clearer trusted-local security guidance, and a compatible transitive Hono security patch.
 
 ## 0.1.11 — 2026-07-09
 

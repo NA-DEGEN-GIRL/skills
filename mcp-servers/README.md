@@ -4,10 +4,16 @@ This directory is the repository-owned home for local MCP server packages. It
 is intentionally separate from `skills/`: MCP servers keep their own runtime,
 manifest, dependency lock, tests, and release version.
 
-The catalog is currently empty because no MCP server source has been imported
-into this repository yet. Do not register an external checkout as though it
-were repository-owned source. Add a catalog entry only when the complete
-package is present here.
+The catalog currently registers [`llm-router-mcp`](llm-router-mcp/README.md),
+whose standalone Git history was imported into this repository. Do not register
+an external checkout as though it were repository-owned source. Add a catalog
+entry only when the complete package is present here.
+
+## Current Servers
+
+| Name | Runtime | Transport | Native check |
+| --- | --- | --- | --- |
+| `llm-router-mcp` | Node.js 20+ | stdio | `npm test` |
 
 ## Layout
 
@@ -49,10 +55,16 @@ CI and local setup can use `npm ci` deterministically.
 
 ## Validation and Safety
 
-Run the repository gate before committing:
+Prepare locked dependencies after cloning or changing a lockfile:
 
 ```bash
-make all
+make setup-mcps
+```
+
+Then run the full check-only repository gate:
+
+```bash
+make check
 ```
 
 The focused metadata check is:
@@ -75,11 +87,14 @@ second writable copy:
 2. Keep the standalone repository active while the imported copy is tested.
 3. Import its history into the direct-child package path and add the catalog
    entry in the same reviewed change.
-4. Run `npm ci`, the package's native tests, and `make all`.
+4. Run locked dependency setup, the package's native tests, and the full root
+   gate.
 5. Update client configuration only after reviewing paths and backups, then
    restart each client and run a smoke check.
 6. After the cutover is verified, make this repository the single writable
    canonical source and archive the old repository with a pointer here.
 
-For the planned `llm-router-mcp` migration, keep the standalone repository and
-its current client configuration unchanged until those steps are completed.
+`llm-router-mcp` has completed the history-import stage. Keep the standalone
+repository and current client configuration unchanged only until the imported
+copy passes the full gate and client cutover is separately reviewed. New source
+changes should be made in this monorepo rather than synchronized both ways.

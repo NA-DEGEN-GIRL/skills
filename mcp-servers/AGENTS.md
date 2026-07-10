@@ -22,4 +22,5 @@ root `AGENTS.md`.
 - During migration, keep the standalone source intact until native tests and
   client smoke checks pass; afterward maintain only one writable canonical
   source rather than synchronizing two copies.
-- Run `make all` before committing or recommending use.
+- After cloning or changing an MCP lockfile, run `make setup-mcps`; then run
+  `make all` before committing or recommending use.

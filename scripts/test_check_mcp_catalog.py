@@ -63,7 +63,29 @@ def write_node_server(root: Path, name: str = "demo-mcp") -> Path:
     return source
 
 
+def git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-c", "core.fsmonitor=false", "-C", str(root), *args],
+        text=True,
+        capture_output=True,
+        check=True,
+        env={
+            **os.environ,
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_PAGER": "cat",
+            "PAGER": "cat",
+        },
+    )
+
+
+def init_git(root: Path) -> None:
+    if not (root / ".git").exists():
+        git(root, "init", "--quiet")
+
+
 def run(root: Path) -> subprocess.CompletedProcess[str]:
+    init_git(root)
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--root", str(root)],
         text=True,
@@ -202,13 +224,32 @@ def test_generated_and_sensitive_package_paths_are_rejected() -> None:
         root = Path(raw)
         source = write_node_server(root)
         write_catalog(root, [catalog_entry()])
-        (source / "node_modules").mkdir()
+        (source / "node_modules" / "demo").mkdir(parents=True)
+        (source / "node_modules" / "demo" / "index.js").write_text(
+            "export {};\n",
+            encoding="utf-8",
+        )
         (source / ".env").write_text("SECRET=value\n", encoding="utf-8")
         (source / ".env.local").write_text("SECRET=value\n", encoding="utf-8")
         (source / "debug.log").write_text("private output\n", encoding="utf-8")
         (source / ".env.example").write_text("SECRET=placeholder\n", encoding="utf-8")
+        (source / ".gitignore").write_text("node_modules/\n.env*\n*.log\n", encoding="utf-8")
+
+        expect(run(root), 0, "ignored setup artifacts are allowed")
+
+        git(
+            root,
+            "add",
+            "--force",
+            "--",
+            "mcp-servers/demo-mcp/node_modules/demo/index.js",
+            "mcp-servers/demo-mcp/.env",
+            "mcp-servers/demo-mcp/.env.local",
+            "mcp-servers/demo-mcp/debug.log",
+            "mcp-servers/demo-mcp/.env.example",
+        )
         result = run(root)
-        expect(result, 1, "generated and sensitive package paths")
+        expect(result, 1, "tracked generated and sensitive package paths")
         for expected in ("node_modules", ".env", ".env.local", "debug.log"):
             if f"FORBIDDEN mcp-servers/demo-mcp/{expected}" not in result.stdout:
                 raise AssertionError(f"forbidden path was not identified: {expected}")

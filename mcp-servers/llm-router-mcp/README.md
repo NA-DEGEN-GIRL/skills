@@ -10,6 +10,11 @@ most from one MCP client:
 
 It supports both persistent provider sessions and isolated one-shot calls.
 
+This package is maintained inside
+[`agent-toolkit`](https://github.com/NA-DEGEN-GIRL/agent-toolkit) at
+`mcp-servers/llm-router-mcp/` and keeps its own manifest, lockfile, tests, and
+release version.
+
 | Workflow | Use it when | Main tool |
 | --- | --- | --- |
 | Persistent `tmux` session | You want the provider to keep multi-turn context. | `llm_tmux_ask` |
@@ -35,16 +40,17 @@ you and return the extracted answer plus response file paths.
 ## Quick Start
 
 ```bash
-git clone https://github.com/NA-DEGEN-GIRL/llm-router-mcp.git "$HOME/llm-router-mcp"
-cd "$HOME/llm-router-mcp"
-npm install
+git clone https://github.com/NA-DEGEN-GIRL/agent-toolkit.git "$HOME/agent-toolkit"
+cd "$HOME/agent-toolkit/mcp-servers/llm-router-mcp"
+npm ci
 npm test
 ```
 
 `npm test` uses fake provider commands and local `tmux` sessions. It verifies the
 MCP server starts, exposes the expected tools, builds provider command lines, and
 writes Markdown request and response files. It does not require the real LLM
-CLIs to be logged in.
+CLIs to be logged in. Its `pretest` fails fast when `tmux` is unavailable so the
+integration coverage cannot pass by being silently skipped.
 
 ## Codex MCP Config
 
@@ -53,16 +59,17 @@ Add this to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.llm-router]
 command = "node"
-args = ["/absolute/path/to/llm-router-mcp/bin/llm-router-mcp.js"]
+args = ["/absolute/path/to/agent-toolkit/mcp-servers/llm-router-mcp/bin/llm-router-mcp.js"]
 
 [mcp_servers.llm-router.env]
-LLM_ROUTER_MCP_STATE_DIR = "/absolute/path/to/.local/state/llm-router-mcp"
+LLM_ROUTER_MCP_STATE_DIR = "/home/USER/.local/state/llm-router-mcp"
 ```
 
 Restart Codex after changing MCP config.
 
-Use real absolute paths in `args` and `LLM_ROUTER_MCP_STATE_DIR`. Some MCP
-clients do not expand `~` or `$HOME` when they launch a command.
+Use real absolute paths in `args` and `LLM_ROUTER_MCP_STATE_DIR`. Keep the state
+directory outside the entire `agent-toolkit` checkout. Some MCP clients do not
+expand `~` or `$HOME` when they launch a command.
 
 ## Other MCP Clients
 
@@ -76,9 +83,9 @@ JSON-style clients can use:
   "mcpServers": {
     "llm-router": {
       "command": "node",
-      "args": ["/absolute/path/to/llm-router-mcp/bin/llm-router-mcp.js"],
+      "args": ["/absolute/path/to/agent-toolkit/mcp-servers/llm-router-mcp/bin/llm-router-mcp.js"],
       "env": {
-        "LLM_ROUTER_MCP_STATE_DIR": "/absolute/path/to/.local/state/llm-router-mcp"
+        "LLM_ROUTER_MCP_STATE_DIR": "/home/USER/.local/state/llm-router-mcp"
       }
     }
   }
@@ -186,7 +193,9 @@ It contains:
 - `workdirs/` scratch workdirs for each provider
 
 Runtime state may contain private project details and model responses. Keep it
-outside the repo and prune it periodically if it grows large.
+outside the entire repository checkout and prune it periodically if it grows
+large. On a shared machine, protect that directory with permissions appropriate
+for private prompts and model output.
 
 ## Troubleshooting
 
@@ -220,16 +229,30 @@ larger `timeoutMs`.
 
 ## Security Notes
 
+- Run this as a local stdio server for trusted MCP clients, not as a remotely
+  exposed or multi-user service.
 - This MCP runs local CLIs with the same OS account privileges as the MCP
   client. Those CLIs can read and write whatever that account can access.
+- Tool callers can supply Markdown `inputPath` values and override `stateDir`,
+  `cwd`, and the persistent-session `command`. A trusted caller can therefore
+  read Markdown files, write runtime artifacts, or launch provider commands
+  anywhere permitted to the OS account.
+- Provider commands use a scratch workdir under the external state directory by
+  default. Supplying `cwd` can expose a real project to provider reads and
+  writes, so review that override deliberately.
 - Do not commit runtime state. Inputs, generated prompts, raw responses, and
   response Markdown files may contain private project details.
 - The default state directory is outside the repo:
   `~/.local/state/llm-router-mcp`.
-- `.gitignore` excludes common local state paths in case the state directory is
-  pointed at the project.
-- This MCP automates local CLIs. It does not bypass login, permission prompts,
-  provider policy, or model-side refusal behavior.
+- The package-local `.gitignore` excludes common state paths only when they are
+  created inside this package directory. It is defense in depth, not a
+  substitute for keeping state outside the complete checkout.
+- Some default launcher commands request non-interactive operation with
+  `--ask-for-approval never` or `--permission-mode dontAsk`. They do not grant
+  privileges beyond the provider CLI's active sandbox and permission policy,
+  but you should not expect an interactive confirmation step.
+- This MCP does not bypass provider login, provider policy, or model-side
+  refusal behavior.
 - Persistent `tmux` sessions preserve conversation context. Use
   `llm_headless_ask` for sensitive one-off questions that should not enter a
   long-lived provider session.

@@ -24,7 +24,7 @@ For the shared packages, `<agent-home>` is `${CODEX_HOME:-$HOME/.codex}` for Cod
 
 ## Safety Policy
 
-- Validate the repository before installing: `make all`.
+- Validate the skills surface before installing: `make check-skills`.
 - The installer is **dry-run by default**. Mutation requires `--apply`.
 - Existing same-name packages are moved to `<agent-home>/skill-backups/<name>/<timestamp>/payload`, outside the `skills/` discovery tree. Do not put backups beside live packages: resolvers may rediscover their `SKILL.md` and create duplicate routing.
 - Package trees containing symlinks or special files are rejected; installable payloads must contain only real directories and regular files.
@@ -48,10 +48,10 @@ Inspect the package registry and run the complete gate:
 
 ```bash
 cat skills/catalog.json
-make all
+make check-skills
 ```
 
-`make all` runs the local and optional external skill validators, Python syntax checks, smoke tests, catalog checks, and family sync checks without writing `.pyc` files.
+`make check-skills` runs the local and optional external skill validators, Python syntax checks, smoke tests, catalog checks, and family sync checks without requiring MCP dependencies or writing `.pyc` files.
 
 ## Choose Packages
 
@@ -180,7 +180,7 @@ Use `--backup <timestamp-directory>` to select a specific backup. Backup metadat
 Use this only when `scripts/install_skill.py` cannot run.
 
 1. Confirm the package in `skills/catalog.json` targets the requested agent.
-2. Run `make all` or at minimum `python3 scripts/validate_skill.py <source-folder>`.
+2. Run `make check-skills` or at minimum `python3 scripts/validate_skill.py <source-folder>`.
 3. Choose the exact destination from the table.
 4. Move any existing destination to an explicitly reviewed backup directory **outside** `<agent-home>/skills/`.
 5. Copy the whole package directory with metadata preserved.
@@ -196,7 +196,7 @@ When adding a package:
 1. Put it at `skills/<family>/<skill-name>/SKILL.md`.
 2. Add exactly one entry to `skills/catalog.json` with its supported targets.
 3. Update human-facing indexes and examples.
-4. Run `make all`; `scripts/check_catalog.py` verifies discovery, versions, metadata, and root documentation registration.
+4. Run `make check-skills`; `scripts/check_catalog.py` verifies discovery, versions, metadata, and root documentation registration.
 
 Do not infer cross-agent compatibility from folder proximity. Only catalog targets and the package's own contract establish support.
 

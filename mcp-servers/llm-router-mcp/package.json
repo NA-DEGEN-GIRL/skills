@@ -1,13 +1,19 @@
 {
   "name": "llm-router-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for asking Codex, Claude, Grok, and Antigravity through persistent tmux sessions or headless one-shot calls.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NA-DEGEN-GIRL/agent-toolkit.git",
+    "directory": "mcp-servers/llm-router-mcp"
+  },
   "type": "module",
   "bin": {
     "llm-router-mcp": "./bin/llm-router-mcp.js"
   },
   "scripts": {
     "start": "node ./bin/llm-router-mcp.js",
+    "pretest": "tmux -V",
     "test": "node --test test/*.test.js"
   },
   "engines": {

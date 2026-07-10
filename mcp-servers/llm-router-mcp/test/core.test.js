@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   buildTmuxCommand,
@@ -18,21 +19,31 @@ import {
 } from "../src/core.js";
 
 const PROVIDERS = ["codex", "claude", "grok", "antigravity"];
+const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_DIR = path.dirname(TEST_DIR);
+const FAKE_LLM = path.join(TEST_DIR, "fixtures", "fake-llm.js");
 
 async function requireTmux(t) {
-  const result = await runCommand("tmux", ["-V"], {
-    allowFailure: true,
-    timeoutMs: 5000
-  });
-  if (result.code !== 0) {
-    t.skip("tmux is not available");
+  try {
+    const result = await runCommand("tmux", ["-V"], {
+      allowFailure: true,
+      timeoutMs: 5000
+    });
+    if (result.code === 0) {
+      return true;
+    }
+  } catch {
+    // Direct node:test runs may not have the package pretest prerequisite.
   }
+  t.skip("tmux is not available");
+  return false;
 }
 
 async function makeFixture(t) {
-  await requireTmux(t);
+  if (!(await requireTmux(t))) {
+    return null;
+  }
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "llm-router-mcp-test-"));
-  const fakeLlm = path.resolve("test/fixtures/fake-llm.js");
   const sessionPrefix = `lrm-${process.pid}-${Date.now()}-${Math.random()
     .toString(16)
     .slice(2)}`;
@@ -44,18 +55,17 @@ async function makeFixture(t) {
   });
   return {
     tmp,
-    fakeCommand: `node ${fakeLlm}`,
+    fakeCommand: `node ${shellQuote(FAKE_LLM)}`,
     sessionPrefix,
-    cwd: process.cwd()
+    cwd: PACKAGE_DIR
   };
 }
 
 async function makeFakePath(t) {
   const fakeBin = await fs.mkdtemp(path.join(os.tmpdir(), "llm-router-fake-bin-"));
-  const fakeLlm = path.resolve("test/fixtures/fake-llm.js");
   for (const name of ["codex", "claude", "grok", "agy"]) {
     const target = path.join(fakeBin, name);
-    await fs.writeFile(target, `#!/usr/bin/env bash\nnode ${shellQuote(fakeLlm)} "$@"\n`, {
+    await fs.writeFile(target, `#!/usr/bin/env bash\nnode ${shellQuote(FAKE_LLM)} "$@"\n`, {
       mode: 0o755
     });
   }
@@ -85,6 +95,9 @@ test("provider list and tmux commands expose all requested CLIs", () => {
 
 test("tmux ask preserves context-capable Markdown nonce protocol for each provider", async (t) => {
   const fixture = await makeFixture(t);
+  if (!fixture) {
+    return;
+  }
 
   for (const provider of PROVIDERS) {
     const input = await writeInputFile({
@@ -127,6 +140,9 @@ test("tmux ask preserves context-capable Markdown nonce protocol for each provid
 
 test("tmux wait returns timeout state and Markdown fallback when done marker is missing", async (t) => {
   const fixture = await makeFixture(t);
+  if (!fixture) {
+    return;
+  }
   const input = await writeInputFile({
     provider: "grok",
     markdown: "NO_DONE_MARKER",
@@ -173,7 +189,7 @@ test("headless ask uses one-shot CLI calls and writes Markdown outputs", async (
       markdown: `# ${provider} one shot\n\nReturn a short answer.`,
       filename: `${provider}.md`,
       stateDir: tmp,
-      cwd: process.cwd(),
+      cwd: PACKAGE_DIR,
       timeoutMs: 5000,
       model: provider === "antigravity" ? "ui-selected" : "test-model"
     });

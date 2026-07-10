@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_PARTS = {".git", ".handoff", ".vibe-ide-temp", "__pycache__"}
+SKIP_PARTS = {".git", ".handoff", ".vibe-ide-temp", "__pycache__", "node_modules"}
 LINK_RE = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+['\"][^)]*['\"])?\)")
 
 
