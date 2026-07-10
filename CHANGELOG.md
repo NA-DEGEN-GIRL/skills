@@ -2,6 +2,14 @@
 
 This file summarizes repository releases. Installable package folders remain focused on runtime assets; release history stays at the repository root.
 
+## Unreleased
+
+### Repository structure
+
+- Expanded the repository contract from skills-only packaging to a broader local-agent toolkit while preserving the existing `skills/` layout and installer behavior.
+- Added a separate `mcp-servers/` catalog and nested maintenance rules so MCP manifests, versions, tests, credentials, and runtime state remain isolated from the skills bundle.
+- Added MCP catalog validation to the existing `make all` gate without importing or changing the standalone `llm-router-mcp` source yet.
+
 ## 0.1.11 — 2026-07-09
 
 ### Safety and installation

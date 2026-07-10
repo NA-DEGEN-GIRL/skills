@@ -1,6 +1,10 @@
-# Useful Skills
+# Agent Toolkit
 
-This repository stores portable, agent-installable skill packages grouped by capability family. It currently covers idea shaping, quality-gate bootstrap, session handoff, subagent design, repo instructions, and read-only repo orientation without changing the package layout contract.
+This repository manages portable local-agent tooling in one place while keeping each tool type independently installable and testable. It currently ships skill packages for Codex and Claude Code, and it includes the repository contract for adding locally managed MCP servers without mixing their manifests, versions, or runtime state into the skills bundle.
+
+- Skills live under [`skills/`](skills/README.md) and use [`skills/catalog.json`](skills/catalog.json).
+- MCP servers live under [`mcp-servers/`](mcp-servers/README.md) and use [`mcp-servers/catalog.json`](mcp-servers/catalog.json).
+- The two catalogs are intentionally separate because their package, install, release, and runtime contracts differ.
 
 ## Skills at a glance
 
@@ -20,7 +24,7 @@ This repository stores portable, agent-installable skill packages grouped by cap
 
 각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `idea-shaping`은 raw voice or freeform thought를 seed 문장으로 정리한 뒤 계획 전 결정/이유를 Design Brief로 구체화하는 용도이고, `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이며, `handoff`는 같은 agent 내 맥락 위생이 주 용도입니다. `distill-ramble`, `shape-idea`, `orient-repo`는 Codex·Claude 공용입니다.
 
-Current repository version: `0.1.11`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.11` for the skills bundle. The root `VERSION` intentionally applies only to skill packages; each MCP server owns its version in its native package manifest.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
@@ -29,16 +33,20 @@ Current repository version: `0.1.11`. The root `VERSION` is the monorepo release
 ## Contents
 
 ```text
-useful-skills/
+agent-toolkit/
 ├── VERSION
 ├── README.md
-├── INSTALL.md              # LLM-first install entrypoint
+├── INSTALL.md              # LLM-first skill install entrypoint
 ├── CHANGELOG.md            # repository release notes
 ├── AGENTS.md               # repo-local agent instructions
 ├── LLM_CONTEXT.md          # maintainer context for future agents
 ├── Makefile
-├── scripts/                # repo-level validators and safe installer/doctor
+├── scripts/                # repo-level validators and skill installer/doctor
 ├── evals/                  # forward-test scenarios and assertions
+├── mcp-servers/
+│   ├── README.md           # MCP package and migration contract
+│   ├── AGENTS.md           # nested MCP maintenance instructions
+│   └── catalog.json        # MCP registry; empty until source is imported
 └── skills/
     ├── README.md           # skills/family index
     ├── catalog.json        # package/target registry
@@ -75,7 +83,7 @@ useful-skills/
         └── orient-repo/    # installable agent-neutral skill package
 ```
 
-## Layout Contract
+## Skills Layout Contract
 
 Installable packages live under:
 
@@ -91,6 +99,16 @@ Rules:
 4. Put shared repo tooling in root `scripts/`; put skill-runtime scripts inside the package `scripts/` folder.
 5. Register every package and supported agent in `skills/catalog.json`.
 6. A skill package is discovered only at `skills/<family>/<skill-name>/SKILL.md`. Run `make all` before committing or recommending installation.
+
+## MCP Server Layout Contract
+
+Locally managed MCP servers live under:
+
+```text
+mcp-servers/<server-name>/
+```
+
+Each server keeps its own manifest, lockfile, version, tests, and release lifecycle. Register only source that is actually present in this repository; until an MCP has been imported, `mcp-servers/catalog.json` remains empty. Do not commit client credentials, rendered user configuration, provider authentication, or runtime state. See [`mcp-servers/README.md`](mcp-servers/README.md) for the import and maintenance contract.
 
 ## Current Skill Families
 
@@ -196,7 +214,9 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## Install
 
-Use [`INSTALL.md`](INSTALL.md). The canonical `scripts/install_skill.py` workflow is dry-run by default, validates the package, and keeps timestamped backups under the agent home but outside `skills/`. Do **not** replace a default `handoff` skill unless the user explicitly asks.
+Use [`INSTALL.md`](INSTALL.md) for skills. The canonical `scripts/install_skill.py` workflow is dry-run by default, validates the package, and keeps timestamped backups under the agent home but outside `skills/`. Do **not** replace a default `handoff` skill unless the user explicitly asks.
+
+MCP servers do not use the skill installer. No MCP source has been imported yet; the standalone `llm-router-mcp` repository remains the active source until a separately reviewed history import and client cutover are complete.
 
 If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. During trials, explicitly name the desired skill in prompts:
 
@@ -220,7 +240,7 @@ make all
 # or: make check
 ```
 
-This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, installer/runtime smoke tests, catalog validation, and family sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution.
+This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, installer/runtime smoke tests, skill and MCP catalog validation, and family sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution. MCP runtime tests remain package-specific and must be wired into the gate when source is imported.
 
 ## Current Skill Entrypoints
 

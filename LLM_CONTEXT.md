@@ -2,7 +2,7 @@
 
 ## What This Is
 
-This repository is a local workspace for useful, portable skill packages. It is now structured to support multiple future skill families, not only handoff.
+This repository is a local workspace for portable agent tooling. Skill packages remain its current installable contents, and `mcp-servers/` provides a separate package boundary for MCP servers that may be brought into the same repository later.
 
 Current included families:
 
@@ -16,24 +16,27 @@ Current included families:
 - `skills/repo-instructions/write-agents-md` — Codex-specific AGENTS.md drafting/review package.
 - `skills/repo-orientation/orient-repo` — agent-neutral, read-only repo orientation package (installed to both `~/.codex` and `~/.claude`).
 
+The MCP catalog currently has no local server entries. `llm-router-mcp` remains a standalone repository until its history is deliberately imported under `mcp-servers/llm-router-mcp/`, its native tests pass, and configured clients have been cut over. Do not create that destination as a placeholder before a subtree-style import.
+
 The user asked to keep these local, agent-specific where needed, and not patch installed global skills directly. The current version is `0.1.11`. For idea-shaping, the primary intended use is pre-plan or midstream clarification: first optionally distill raw voice/freeform thought into seed sentences, then decide what/why, translate consequential technical forks, check new feature ideas against existing key decisions, and draft an accepted Design Brief without coding, scaffolding, running repo commands, or editing AGENTS.md. For repo-bootstrap, the primary intended use is gate-first initialization for LLM-debuggable codebases: a reviewed check-only canonical runner (`make check` only when Make is selected), enforceable structure checks where tooling supports them, plus optional pre-commit/CI after approval; it is not general `git init`. For handoff, the primary intended use is same-agent context hygiene. For subagents, the primary intended use is repo-grounded Codex delegation planning and operation under the active runtime's delegation policy. For repo-instructions, the primary intended use is fact-grounded `AGENTS.md` drafting and review. For repo-orientation, the primary intended use is a read-only descriptive orientation report for any repo.
 
 ## Read Order
 
-1. `INSTALL.md` — immediate install instructions for LLM agents given only the repo URL.
-2. `skills/README.md` — family/package index and layout rules.
-3. `skills/idea-shaping/USAGE.md` — idea-shaping prompts and Design Brief flow.
-4. `skills/repo-bootstrap/USAGE.md` — quality-gate bootstrap prompts and modes.
-5. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
-6. `skills/subagents/USAGE.md` — subagent planning/spawn examples.
-7. `skills/repo-instructions/USAGE.md` — AGENTS.md drafting/review examples.
-8. `skills/repo-orientation/USAGE.md` — read-only repo orientation examples.
-9. `README.md` — human/LLM overview, installation, routing caveats.
-10. `AGENTS.md` — concise repo-local rules for coding agents.
-11. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
-12. Package runtime scripts/references under `skills/<family>/<skill-name>/`.
-13. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
-14. `evals/scenarios.json` — high-risk forward-test prompts; do not leak expected answers into fresh-agent test prompts.
+1. `INSTALL.md` — immediate skill-install instructions for LLM agents given only the repo URL.
+2. `skills/README.md` — skill family/package index and layout rules.
+3. `mcp-servers/README.md` — MCP package, version, security, and migration contract.
+4. `skills/idea-shaping/USAGE.md` — idea-shaping prompts and Design Brief flow.
+5. `skills/repo-bootstrap/USAGE.md` — quality-gate bootstrap prompts and modes.
+6. `skills/handoff/USAGE.md` — concrete Save/Resume prompts and cross-agent examples.
+7. `skills/subagents/USAGE.md` — subagent planning/spawn examples.
+8. `skills/repo-instructions/USAGE.md` — AGENTS.md drafting/review examples.
+9. `skills/repo-orientation/USAGE.md` — read-only repo orientation examples.
+10. `README.md` — human/LLM overview, installation, routing caveats.
+11. `AGENTS.md` — concise repo-local rules for coding agents.
+12. Package `SKILL.md` files under `skills/<family>/<skill-name>/`.
+13. Package runtime scripts/references under `skills/<family>/<skill-name>/`.
+14. Root `scripts/`, family `skills/<family>/scripts/`, and `Makefile` — repo validation/sync surface.
+15. `evals/scenarios.json` — high-risk forward-test prompts; do not leak expected answers into fresh-agent test prompts.
 
 ## Layout Rules
 
@@ -43,6 +46,10 @@ The user asked to keep these local, agent-specific where needed, and not patch i
 - Family docs belong in `skills/<family>/README.md` and optional `USAGE.md`.
 - Repo-wide install and discovery docs belong at root (`INSTALL.md`, `README.md`) and `skills/README.md`.
 - Do not put repo/user-facing README clutter inside installable skill package folders unless required by the skill system; keep package folders focused on `SKILL.md`, `agents/`, `scripts/`, `references/`, and `assets/`.
+- MCP source path: `mcp-servers/<server-name>/`, registered independently in `mcp-servers/catalog.json`.
+- Each MCP owns its native manifest, lockfile, semantic version, runtime dependencies, tests, and release tags. Do not couple it to root `VERSION`.
+- Keep credentials, rendered client configuration, provider authentication, runtime state, and machine-specific paths outside the repository.
+- During migration, keep the standalone repository intact until import and client cutover are verified; afterward choose one writable canonical source rather than syncing two copies.
 
 ## Idea Shaping Notes
 
@@ -128,7 +135,7 @@ make all
 
 - Do not edit `~/.codex/skills/handoff`, `~/.claude/skills/handoff`, or `~/.grok/skills/*` unless explicitly requested.
 - Prefer editing only inside this repository.
-- Root `VERSION` is the monorepo release marker. Current package versions intentionally match it; if future packages diverge, update validation/docs accordingly.
+- Root `VERSION` is the skills-bundle release marker. Current skill package versions intentionally match it; MCP versions must come from their native manifests.
 - Update `VERSION`, package `VERSION` files, relevant `SKILL.md` files, and tests together when bumping versions.
 - If adding a new shared script/test for a family, add it to every variant that should remain in sync and update/add a sync check if needed.
 - If changing any `SKILL.md`, run `make all`.

@@ -1,6 +1,6 @@
-# Install Guide For LLM Agents
+# Skill Install Guide For LLM Agents
 
-Use this file when a user gives you this repository and asks to install one or more matching skills. Install only the packages matching the requested capability and target agent. For repository maintenance, also read `AGENTS.md` and `LLM_CONTEXT.md`.
+Use this file when a user gives you this repository and asks to install one or more matching skills. Install only the packages matching the requested capability and target agent. This guide and `scripts/install_skill.py` are intentionally skill-specific; MCP servers use the independent contract in [`mcp-servers/README.md`](mcp-servers/README.md). For repository maintenance, also read `AGENTS.md` and `LLM_CONTEXT.md`.
 
 `skills/catalog.json` is the machine-readable package registry. This document explains the user-facing policy; `scripts/install_skill.py` implements the safe install, doctor, and rollback operations.
 
@@ -40,8 +40,8 @@ If the repository is not already present:
 
 ```bash
 tmpdir=$(mktemp -d)
-git clone --depth 1 https://github.com/NA-DEGEN-GIRL/skills.git "$tmpdir/skills"
-cd "$tmpdir/skills"
+git clone --depth 1 https://github.com/NA-DEGEN-GIRL/agent-toolkit.git "$tmpdir/agent-toolkit"
+cd "$tmpdir/agent-toolkit"
 ```
 
 Inspect the package registry and run the complete gate:
@@ -189,7 +189,7 @@ Use this only when `scripts/install_skill.py` cannot run.
 
 Do not use an adjacent `<dest>.bak.<timestamp>` directory and do not use raw `ln -sfn` over an existing directory.
 
-## Future Packages
+## Future Skill Packages
 
 When adding a package:
 
