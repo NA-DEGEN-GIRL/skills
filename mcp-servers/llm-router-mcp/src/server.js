@@ -5,8 +5,10 @@ import { z } from "zod";
 
 import {
   capturePane,
+  doctorProviders,
   ensureSession,
   headlessAsk,
+  killSession,
   listProviders,
   sendInput,
   status,
@@ -20,26 +22,36 @@ const providerSchema = z
   .enum(["codex", "claude", "grok", "antigravity", "agy", "gemini", "gpt", "openai", "xai"])
   .describe("LLM provider. Aliases: agy/gemini -> antigravity, gpt/openai -> codex, xai -> grok.");
 
+const sessionNameSchema = z
+  .string()
+  .min(1)
+  .max(80)
+  .regex(/^[A-Za-z0-9_-]+$/)
+  .optional()
+  .describe("Router-owned tmux session name using letters, numbers, underscore, or dash.");
+const timeoutSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(3_600_000)
+  .optional()
+  .describe("Maximum wait time in milliseconds, capped at one hour.");
+const inputPathSchema = z.string().min(1).max(4096);
+const dimensionSchema = z.number().int().min(20).max(1000).optional();
+const pollSchema = z.number().int().min(1).max(60_000).optional();
+const captureLinesSchema = z.number().int().min(1).max(10_000).optional();
+const nonceSchema = z.string().min(6).max(96).regex(/^[A-Za-z0-9_.:-]+$/);
+
 const optionalCommon = {
   provider: providerSchema,
-  sessionName: z
-    .string()
-    .optional()
-    .describe("tmux session name. Defaults to llm-router provider defaults such as codex-mcp."),
-  timeoutMs: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .describe("Maximum wait time in milliseconds."),
-  stateDir: z
-    .string()
-    .optional()
-    .describe("Runtime state directory for generated Markdown input, prompts, and responses."),
+  sessionName: sessionNameSchema,
+  timeoutMs: timeoutSchema,
   model: z
     .string()
+    .min(1)
+    .max(200)
     .optional()
-    .describe("Provider model to request. Codex/Claude/Grok use CLI flags; Antigravity receives this as an in-prompt instruction because agy exposes no model flag.")
+    .describe("Optional provider model override. When omitted, the provider CLI configuration/default is used.")
 };
 
 export async function main() {
@@ -61,6 +73,19 @@ export async function main() {
   );
 
   server.registerTool(
+    "llm_provider_doctor",
+    {
+      title: "Inspect provider launchers",
+      description:
+        "Report resolved provider executables, versions, bypass policy, model source, and tmux availability without making a model request.",
+      inputSchema: {
+        provider: providerSchema.optional()
+      }
+    },
+    async (args) => jsonContent(await doctorProviders(args))
+  );
+
+  server.registerTool(
     "llm_write_input",
     {
       title: "Write Markdown input",
@@ -68,12 +93,12 @@ export async function main() {
         "Write a Markdown prompt to the llm-router state directory and return inputPath for tmux or headless calls.",
       inputSchema: {
         provider: providerSchema.optional(),
-        markdown: z.string().min(1).describe("Markdown prompt content."),
+        markdown: z.string().min(1).max(2_000_000).describe("Markdown prompt content."),
         filename: z
           .string()
+          .max(128)
           .optional()
-          .describe("Optional .md filename. Path components are ignored."),
-        stateDir: optionalCommon.stateDir
+          .describe("Optional .md filename. Path components are ignored.")
       }
     },
     async (args) => jsonContent(await writeInputFile(args))
@@ -88,22 +113,18 @@ export async function main() {
       inputSchema: {
         provider: optionalCommon.provider,
         sessionName: optionalCommon.sessionName,
-        command: z
-          .string()
-          .optional()
-          .describe("Command tmux should run when creating the session. Overrides provider defaults."),
         model: optionalCommon.model,
         cwd: z
           .string()
+          .max(4096)
           .optional()
-          .describe("Working directory for a newly created session. Defaults to a provider scratch workdir."),
+          .describe("Opt-in working directory override. Requires LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE=1."),
         timeoutMs: optionalCommon.timeoutMs,
-        stateDir: optionalCommon.stateDir,
-        columns: z.number().int().positive().optional(),
-        rows: z.number().int().positive().optional()
+        columns: dimensionSchema,
+        rows: dimensionSchema
       }
     },
-    async (args) => jsonContent(await ensureSession(args))
+    async (args) => jsonContent(await ensureSession(guardCwdOverride(args)))
   );
 
   server.registerTool(
@@ -114,28 +135,20 @@ export async function main() {
         "Send a Markdown input file through tmux and return nonce markers. Use llm_tmux_wait to collect the answer.",
       inputSchema: {
         provider: optionalCommon.provider,
-        inputPath: z.string().describe("Absolute or relative path to a .md/.markdown input file."),
-        nonce: z
-          .string()
-          .optional()
-          .describe("Optional caller-supplied unique nonce. Generated when omitted."),
+        inputPath: inputPathSchema.describe("Managed .md/.markdown path returned by llm_write_input. External paths require an explicit server environment opt-in."),
         sessionName: optionalCommon.sessionName,
-        command: z
-          .string()
-          .optional()
-          .describe("Command used only if the tmux session must be created."),
         model: optionalCommon.model,
         cwd: z
           .string()
+          .max(4096)
           .optional()
-          .describe("Working directory used only if the tmux session must be created."),
+          .describe("Opt-in working directory override. Requires LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE=1."),
         timeoutMs: optionalCommon.timeoutMs,
-        stateDir: optionalCommon.stateDir,
-        columns: z.number().int().positive().optional(),
-        rows: z.number().int().positive().optional()
+        columns: dimensionSchema,
+        rows: dimensionSchema
       }
     },
-    async (args) => jsonContent(await sendInput(args))
+    async (args) => jsonContent(await sendInput(guardCwdOverride(args)))
   );
 
   server.registerTool(
@@ -143,15 +156,14 @@ export async function main() {
     {
       title: "Wait for persistent LLM start marker",
       description:
-        "Wait until the provider prints the start marker for a nonce. This confirms the request began.",
+        "Wait until the Markdown transaction completes or its diagnostic pane start marker appears.",
       inputSchema: {
         provider: optionalCommon.provider,
-        nonce: z.string().describe("Nonce returned by llm_tmux_send."),
+        nonce: nonceSchema.describe("Nonce returned by llm_tmux_send."),
         sessionName: optionalCommon.sessionName,
         timeoutMs: optionalCommon.timeoutMs,
-        pollMs: z.number().int().positive().optional(),
-        captureLines: z.number().int().positive().optional(),
-        stateDir: optionalCommon.stateDir
+        pollMs: pollSchema,
+        captureLines: captureLinesSchema
       }
     },
     async (args) => jsonContent(await waitForStart(args))
@@ -162,15 +174,14 @@ export async function main() {
     {
       title: "Wait for persistent LLM response",
       description:
-        "Wait until the provider prints the done marker for a nonce. The answer is also written to a Markdown response file.",
+        "Wait for validated response.md and done.json transaction files. Pane markers are diagnostic unless legacy fallback is explicitly enabled.",
       inputSchema: {
         provider: optionalCommon.provider,
-        nonce: z.string().describe("Nonce returned by llm_tmux_send."),
+        nonce: nonceSchema.describe("Nonce returned by llm_tmux_send."),
         sessionName: optionalCommon.sessionName,
         timeoutMs: optionalCommon.timeoutMs,
-        pollMs: z.number().int().positive().optional(),
-        captureLines: z.number().int().positive().optional(),
-        stateDir: optionalCommon.stateDir
+        pollMs: pollSchema,
+        captureLines: captureLinesSchema
       }
     },
     async (args) => jsonContent(await waitForResponse(args))
@@ -181,33 +192,25 @@ export async function main() {
     {
       title: "Ask persistent LLM and wait",
       description:
-        "Convenience tool: send a Markdown input file to a provider through tmux, then wait for the done nonce marker.",
+        "Convenience tool: send one Markdown file reference through tmux, then wait for the validated file transaction.",
       inputSchema: {
         provider: optionalCommon.provider,
-        inputPath: z.string().describe("Absolute or relative path to a .md/.markdown input file."),
-        nonce: z
-          .string()
-          .optional()
-          .describe("Optional caller-supplied unique nonce. Generated when omitted."),
+        inputPath: inputPathSchema.describe("Managed .md/.markdown path returned by llm_write_input. External paths require an explicit server environment opt-in."),
         sessionName: optionalCommon.sessionName,
-        command: z
-          .string()
-          .optional()
-          .describe("Command used only if the tmux session must be created."),
         model: optionalCommon.model,
         cwd: z
           .string()
+          .max(4096)
           .optional()
-          .describe("Working directory used only if the tmux session must be created."),
+          .describe("Opt-in working directory override. Requires LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE=1."),
         timeoutMs: optionalCommon.timeoutMs,
-        pollMs: z.number().int().positive().optional(),
-        captureLines: z.number().int().positive().optional(),
-        stateDir: optionalCommon.stateDir,
-        columns: z.number().int().positive().optional(),
-        rows: z.number().int().positive().optional()
+        pollMs: pollSchema,
+        captureLines: captureLinesSchema,
+        columns: dimensionSchema,
+        rows: dimensionSchema
       }
     },
-    async (args) => jsonContent(await tmuxAsk(args))
+    async (args) => jsonContent(await tmuxAsk(guardCwdOverride(args)))
   );
 
   server.registerTool(
@@ -220,27 +223,46 @@ export async function main() {
         provider: optionalCommon.provider,
         inputPath: z
           .string()
+          .max(4096)
           .optional()
-          .describe("Absolute or relative path to a .md/.markdown input file. Use this or markdown."),
+          .describe("Managed .md/.markdown path returned by llm_write_input. Use this or markdown; external paths require server opt-in."),
         markdown: z
           .string()
+          .max(2_000_000)
           .optional()
           .describe("Markdown prompt content. Written to inputPath automatically when inputPath is omitted."),
-        filename: z.string().optional(),
-        nonce: z
-          .string()
-          .optional()
-          .describe("Optional caller-supplied unique nonce. Generated when omitted."),
+        filename: z.string().max(128).optional(),
         model: optionalCommon.model,
         cwd: z
           .string()
+          .max(4096)
           .optional()
-          .describe("Working directory for the one-shot command. Defaults to a provider scratch workdir."),
-        timeoutMs: optionalCommon.timeoutMs,
-        stateDir: optionalCommon.stateDir
+          .describe("Opt-in working directory override. Requires LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE=1."),
+        timeoutMs: optionalCommon.timeoutMs
       }
     },
-    async (args) => jsonContent(await headlessAsk(args))
+    async (args) => {
+      const hasMarkdown = typeof args.markdown === "string" && args.markdown.length > 0;
+      const hasInputPath = typeof args.inputPath === "string" && args.inputPath.length > 0;
+      if (hasMarkdown === hasInputPath) {
+        throw new Error("exactly one of markdown or inputPath is required");
+      }
+      return jsonContent(await headlessAsk(guardCwdOverride(args)));
+    }
+  );
+
+  server.registerTool(
+    "llm_tmux_stop",
+    {
+      title: "Stop persistent LLM tmux session",
+      description:
+        "Stop a router-owned provider session and clear its launch metadata and busy lock.",
+      inputSchema: {
+        provider: optionalCommon.provider,
+        sessionName: optionalCommon.sessionName
+      }
+    },
+    async (args) => jsonContent(await killSession({ ...args, requireOwned: true }))
   );
 
   server.registerTool(
@@ -251,12 +273,11 @@ export async function main() {
         "Capture tmux pane state and optionally check whether a nonce has started or completed.",
       inputSchema: {
         provider: optionalCommon.provider,
-        nonce: z
-          .string()
+        nonce: nonceSchema
           .optional()
           .describe("Optional nonce to check for start/done markers in pane output."),
         sessionName: optionalCommon.sessionName,
-        lines: z.number().int().positive().optional()
+        lines: captureLinesSchema
       }
     },
     async (args) => jsonContent(await status(args))
@@ -270,10 +291,19 @@ export async function main() {
       inputSchema: {
         provider: optionalCommon.provider,
         sessionName: optionalCommon.sessionName,
-        lines: z.number().int().positive().optional()
+        lines: captureLinesSchema
       }
     },
-    async (args) => jsonContent({ paneText: await capturePane(args) })
+    async (args) => {
+      if (process.env.LLM_ROUTER_MCP_ENABLE_DEBUG_TOOLS !== "1") {
+        throw new Error(
+          "raw pane capture is disabled; set LLM_ROUTER_MCP_ENABLE_DEBUG_TOOLS=1 to opt in"
+        );
+      }
+      return jsonContent({
+        paneText: await capturePane({ ...args, requireOwned: true })
+      });
+    }
   );
 
   await server.connect(new StdioServerTransport());
@@ -297,4 +327,13 @@ function jsonContent(value) {
       }
     ]
   };
+}
+
+function guardCwdOverride(args) {
+  if (args.cwd && process.env.LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE !== "1") {
+    throw new Error(
+      "cwd overrides are disabled; configure a provider CWD in the MCP environment or explicitly set LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE=1"
+    );
+  }
+  return args;
 }

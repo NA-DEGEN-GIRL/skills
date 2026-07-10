@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import path from "node:path";
 
 const args = process.argv.slice(2);
 
@@ -8,9 +9,16 @@ if (args.includes("--version") || args.includes("version")) {
   console.log("fake-llm 0.1.0");
   process.exit(0);
 }
+if (args.includes("--help") || args.includes("-h")) {
+  console.log("fake-llm help");
+  process.exit(0);
+}
 
 if (isHeadless(args)) {
   const prompt = readHeadlessPrompt(args);
+  if (prompt.includes("SLOW_HEADLESS")) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 600);
+  }
   answer(prompt, "headless");
 } else {
   process.stdin.setEncoding("utf8");
@@ -20,13 +28,22 @@ if (isHeadless(args)) {
   let requestCount = 0;
   process.stdin.on("data", (chunk) => {
     buffer += chunk;
-    if (!buffer.includes("--- END MCP MARKDOWN INPUT ---")) {
+    const reference = /Read and follow the complete llm-router-mcp Markdown request at:\s*([^\r\n]+)/.exec(
+      buffer
+    );
+    if (reference) {
+      const requestPath = reference[1].trim();
+      fs.writeFileSync(
+        path.join(path.dirname(requestPath), "transport.txt"),
+        buffer,
+        { mode: 0o600 }
+      );
+      const request = fs.readFileSync(requestPath, "utf8");
+      buffer = "";
+      requestCount += 1;
+      answer(request, `tmux ${requestCount}`, { writeTransaction: true });
       return;
     }
-    const request = buffer;
-    buffer = "";
-    requestCount += 1;
-    answer(request, `tmux ${requestCount}`);
   });
 }
 
@@ -51,11 +68,15 @@ function readHeadlessPrompt(args) {
   }
 }
 
-function answer(prompt, mode) {
+function answer(prompt, mode, options = {}) {
   const markers = findMarkers(prompt);
   if (!markers) {
     console.log(`fake ${mode} response without markers`);
     return;
+  }
+
+  if (prompt.includes("HUGE_OUTPUT")) {
+    process.stdout.write("x".repeat(3 * 1024 * 1024));
   }
 
   process.stdout.write(`${markers.startPrefix}${markers.nonce}\n`);
@@ -65,9 +86,47 @@ function answer(prompt, mode) {
     return;
   }
 
-  process.stdout.write(`fake ${mode} answer\n`);
-  process.stdout.write(`prompt bytes ${Buffer.byteLength(prompt, "utf8")}\n`);
+  const answerText = `fake ${mode} answer\nprompt bytes ${Buffer.byteLength(prompt, "utf8")}`;
+  process.stdout.write(`${answerText}\n`);
+
+  if (options.writeTransaction) {
+    const transaction = findTransaction(prompt);
+    if (!transaction) {
+      process.stdout.write("fake transaction metadata missing\n");
+      return;
+    }
+    fs.writeFileSync(transaction.responsePath, `${answerText}\n`, { mode: 0o600 });
+    const temporaryDonePath = `${transaction.donePath}.${process.pid}.tmp`;
+    fs.writeFileSync(
+      temporaryDonePath,
+      `${JSON.stringify(
+        {
+          protocolVersion: 2,
+          provider: transaction.provider,
+          nonce: markers.nonce,
+          requestId: transaction.requestId,
+          status: "completed",
+          completedAt: new Date().toISOString()
+        },
+        null,
+        2
+      )}\n`,
+      { mode: 0o600 }
+    );
+    fs.renameSync(temporaryDonePath, transaction.donePath);
+  }
   process.stdout.write(`${markers.donePrefix}${markers.nonce}\n`);
+}
+
+function findTransaction(value) {
+  const responsePath = /as UTF-8 Markdown to:\s*\n\s+([^\r\n]+)/.exec(value)?.[1]?.trim();
+  const donePath = /atomically rename that temporary file to:\s*\n\s+([^\r\n]+)/.exec(value)?.[1]?.trim();
+  const provider = /"provider":"([A-Za-z0-9_-]+)"/.exec(value)?.[1];
+  const requestId = /"requestId":"([A-Za-z0-9._-]+)"/.exec(value)?.[1];
+  if (!responsePath || !donePath || !provider || !requestId) {
+    return null;
+  }
+  return { responsePath, donePath, provider, requestId };
 }
 
 function findMarkers(value) {

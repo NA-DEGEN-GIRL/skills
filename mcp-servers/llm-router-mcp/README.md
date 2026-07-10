@@ -1,43 +1,43 @@
 # llm-router-mcp
 
-`llm-router-mcp` is a local stdio MCP server for asking the LLM CLIs you use
-most from one MCP client:
-
-- Codex
-- Claude
-- Grok
-- Antigravity (`agy`)
-
-It supports both persistent provider sessions and isolated one-shot calls.
-
-This package is maintained inside
-[`agent-toolkit`](https://github.com/NA-DEGEN-GIRL/agent-toolkit) at
-`mcp-servers/llm-router-mcp/` and keeps its own manifest, lockfile, tests, and
-release version.
+Local stdio MCP server for asking Codex, Claude, Grok, and Antigravity (`agy`)
+through either persistent `tmux` sessions or isolated headless calls. This
+package is maintained under `mcp-servers/llm-router-mcp/` in
+[`agent-toolkit`](https://github.com/NA-DEGEN-GIRL/agent-toolkit).
 
 | Workflow | Use it when | Main tool |
 | --- | --- | --- |
-| Persistent `tmux` session | You want the provider to keep multi-turn context. | `llm_tmux_ask` |
-| Headless one-shot | You want an isolated answer that should not enter long-lived context. | `llm_headless_ask` |
-| Split send/wait | You want to start a long request and poll or inspect it later. | `llm_tmux_send` + `llm_tmux_wait` |
+| Persistent session | The provider should retain multi-turn context. | `llm_tmux_ask` |
+| Headless one-shot | The answer should not enter persistent context. | `llm_headless_ask` |
+| Split send/wait | Start a long request and wait separately. | `llm_tmux_send` + `llm_tmux_wait` |
 
-Both workflows use Markdown files for input and output. Persistent sessions use
-nonce markers so the MCP can detect when a model starts and finishes without
-relying on fragile prompt typing. The high-level tools handle these markers for
-you and return the extracted answer plus response file paths.
+## Important defaults
 
-## Requirements
+- **Full provider bypass is required.** The router injects each provider's
+  documented non-interactive bypass argv and conservatively verifies supported
+  wrappers. It fails closed when an opaque launcher cannot be verified.
+- **Models are not pinned.** Selection order is per-call `model`, provider
+  `LLM_ROUTER_MCP_<PROVIDER>_MODEL`, then the provider CLI's own configuration
+  or default. Claude therefore does not default to `sonnet`; configure your
+  Claude CLI for the desired Opus model or set the optional environment
+  override to `opus`.
+- **Persistent prompts use Markdown file transport.** The router sends one
+  short file-reference line to the TUI instead of pasting multiline Markdown.
+- **tmux is isolated.** Router sessions use a dedicated `tmux -L` socket and do
+  not reuse same-named sessions from the user's normal tmux server.
+- **Runtime artifacts are private.** Managed directories are hardened to
+  `0700`; managed files are `0600`; symlink and repeated-request collisions are
+  rejected.
+
+Full bypass lets provider CLIs act with the OS account's permissions. Only run
+this server for a trusted local MCP client on a machine where that is intended.
+
+## Requirements and validation
 
 - Node.js 20+
 - `tmux`
-- The desired CLIs installed and logged in on the same machine that launches the
-  MCP server:
-  - `codex`
-  - `claude`
-  - `grok`
-  - `agy`
-
-## Quick Start
+- Desired provider CLIs installed and logged in: `codex`, `claude`, `grok`,
+  and/or `agy`
 
 ```bash
 git clone https://github.com/NA-DEGEN-GIRL/agent-toolkit.git "$HOME/agent-toolkit"
@@ -46,15 +46,11 @@ npm ci
 npm test
 ```
 
-`npm test` uses fake provider commands and local `tmux` sessions. It verifies the
-MCP server starts, exposes the expected tools, builds provider command lines, and
-writes Markdown request and response files. It does not require the real LLM
-CLIs to be logged in. Its `pretest` fails fast when `tmux` is unavailable so the
-integration coverage cannot pass by being silently skipped.
+Tests use fake providers and make no real model calls.
 
-## Codex MCP Config
+## MCP configuration
 
-Add this to `~/.codex/config.toml`:
+Codex example:
 
 ```toml
 [mcp_servers.llm-router]
@@ -63,20 +59,11 @@ args = ["/absolute/path/to/agent-toolkit/mcp-servers/llm-router-mcp/bin/llm-rout
 
 [mcp_servers.llm-router.env]
 LLM_ROUTER_MCP_STATE_DIR = "/home/USER/.local/state/llm-router-mcp"
+# Optional: prefer Claude's rolling Opus alias (when supported by the installed CLI/account).
+# LLM_ROUTER_MCP_CLAUDE_MODEL = "opus"
 ```
 
-Restart Codex after changing MCP config.
-
-Use real absolute paths in `args` and `LLM_ROUTER_MCP_STATE_DIR`. Keep the state
-directory outside the entire `agent-toolkit` checkout. Some MCP clients do not
-expand `~` or `$HOME` when they launch a command.
-
-## Other MCP Clients
-
-The server is a normal stdio MCP server, so it can also be used from Claude,
-Grok, Antigravity, or any MCP client that can launch a local command.
-
-JSON-style clients can use:
+JSON-style clients:
 
 ```json
 {
@@ -92,33 +79,33 @@ JSON-style clients can use:
 }
 ```
 
-The machine running this MCP must have the target CLI installed and logged in.
-For example, asking Grok through this MCP requires `grok` to be available on the
-same `PATH` used by the MCP process.
+Use absolute paths. Some MCP clients do not expand `~` or `$HOME`. Restart the
+client after changing its MCP configuration.
 
 ## Tools
 
 | Tool | Purpose |
 | --- | --- |
-| `llm_list_providers` | List supported providers, aliases, default sessions, and model behavior. |
-| `llm_write_input` | Write a Markdown prompt into the state directory and return `inputPath`. |
-| `llm_headless_ask` | Run one provider once without persistent context. Accepts `markdown` or `inputPath`. |
-| `llm_tmux_ask` | Send a Markdown input to a persistent provider session and wait for the final answer. |
-| `llm_tmux_start` | Create or reuse a provider `tmux` session. Reuse preserves context. |
-| `llm_tmux_send` | Send a Markdown input to a persistent session and return nonce markers. |
-| `llm_tmux_wait_start` | Wait until the provider prints the nonce start marker. |
-| `llm_tmux_wait` | Wait for the nonce done marker and write the response Markdown file. |
-| `llm_tmux_status` | Check whether a session is running and whether a nonce started or completed. |
-| `llm_tmux_capture` | Capture recent `tmux` pane text for debugging stuck sessions. |
+| `llm_list_providers` | List providers, aliases, model policy, and bypass requirements. |
+| `llm_provider_doctor` | Resolve executables and report versions, model source, bypass source, and tmux isolation without making a model request. |
+| `llm_write_input` | Create a managed Markdown input and return its path. |
+| `llm_headless_ask` | Run one provider once using exactly one of `markdown` or managed `inputPath`. |
+| `llm_tmux_start` | Create or compatibly reuse a persistent provider session. |
+| `llm_tmux_ask` | Send a managed Markdown request and wait for its response. |
+| `llm_tmux_send` | Send a request and return its nonce/request ID. |
+| `llm_tmux_wait_start` | Wait for file completion or the fallback start marker. |
+| `llm_tmux_wait` | Read the completed file transaction; pane markers are diagnostic by default. |
+| `llm_tmux_status` | Report session, busy, marker, and file-transaction status. |
+| `llm_tmux_capture` | Opt-in raw capture for a router-owned pane (`LLM_ROUTER_MCP_ENABLE_DEBUG_TOOLS=1`). |
+| `llm_tmux_stop` | Stop a router session and clear its launch metadata/busy lock. |
 
-Tool responses are returned as JSON text. Successful ask calls include the
-extracted `answer`, a Markdown `responsePath`, the raw log path, nonce marker
-metadata, and timing details. Timed-out `tmux` calls write a fallback Markdown
-file so the partial pane output is still inspectable.
+Raw `command` and per-call `stateDir` overrides are intentionally not exposed
+by the MCP tools. A per-call `cwd` override requires the explicit server
+environment opt-in `LLM_ROUTER_MCP_ALLOW_CWD_OVERRIDE=1`.
 
-## Usage Examples
+## Examples
 
-One-shot request with no persistent context:
+Headless request:
 
 ```text
 llm_headless_ask(
@@ -127,7 +114,7 @@ llm_headless_ask(
 )
 ```
 
-Persistent provider context:
+Persistent request:
 
 ```text
 llm_write_input(
@@ -138,148 +125,183 @@ llm_write_input(
 
 llm_tmux_ask(
   provider="claude",
-  inputPath="/path/from/llm_write_input/design-review.md"
+  inputPath="/managed/path/returned/above/design-review.md"
 )
 ```
 
-Long-running request with separate send and wait:
+Explicit model override:
 
 ```text
-llm_tmux_send(provider="codex", inputPath="/path/to/prompt.md")
-llm_tmux_wait(provider="codex", nonce="nonce-returned-by-send")
-```
-
-Specific model:
-
-```text
-llm_tmux_ask(provider="codex", model="gpt-5.4", inputPath="/path/to/prompt.md")
 llm_headless_ask(provider="claude", model="opus", markdown="# Task\n\n...")
 ```
 
-## Provider Behavior
+When `model` is omitted, the Claude CLI decides. This is the recommended way
+to follow an account's configured/default model without hardcoding an exact,
+quickly stale model ID.
 
-| Provider | Aliases | Persistent command | Headless command | Default model behavior |
-| --- | --- | --- | --- | --- |
-| `codex` | `gpt`, `openai` | `codex -m gpt-5.4 --ask-for-approval never` | `codex exec -m gpt-5.4 ...` | Uses `gpt-5.4` unless overridden. |
-| `claude` | none | `claude --model sonnet --permission-mode dontAsk` | `claude -p --model sonnet ...` | Uses the CLI `sonnet` alias unless overridden. |
-| `grok` | `xai` | `grok --no-alt-screen` | `grok --prompt-file ...` | Uses the CLI default/latest unless overridden. |
-| `antigravity` | `agy`, `gemini` | `agy` | `agy --print ...` | Uses the CLI default/latest. |
+## Provider launch policy
 
-Model names are passed directly to the provider CLI when that CLI exposes a
-known model flag. Check the provider's own `--help` output if a model string is
-rejected.
+| Provider | CLI default model when omitted | Required bypass |
+| --- | --- | --- |
+| Codex | Codex CLI config/default | `--dangerously-bypass-approvals-and-sandbox` |
+| Claude | Claude CLI config/default | `--dangerously-skip-permissions` |
+| Grok | Grok CLI config/default | `--always-approve --permission-mode bypassPermissions --sandbox off` |
+| Antigravity | `agy` config/default | `--dangerously-skip-permissions` |
 
-Antigravity currently does not expose a known model selection flag in
-`agy --help`. If you pass `model` for Antigravity, the MCP includes it as a
-Markdown instruction instead of a CLI flag. Antigravity also requires browser
-authentication before headless calls can return model output.
+Antigravity model selection is supported with `--model` when an explicit model
+is requested.
 
-`grok --no-alt-screen` is used for persistent sessions so `tmux` pane capture can
-see stable text output.
+### Wrappers and aliases
 
-## Runtime State
+Interactive shell aliases/functions are not expanded by the router and should
+not be relied on. An alias that already appends bypass flags is therefore not
+run or duplicated; the router resolves the executable and applies its own
+policy. Executable wrappers are supported conservatively:
 
-By default, state is stored under:
+- strict one-line shell wrappers of the form `exec <binary> <literal-args> "$@"`
+  are inspected for known bypass flags;
+- opaque/multi-command shell wrappers and explicitly configured Node/Python or
+  other non-shell scripts fail closed because they may ignore or rewrite
+  router-supplied arguments; using one requires both
+  `PERMISSION_SOURCE=launcher` and the explicit unverified-launcher opt-in;
+- structured permission/model duplicates are normalized;
+- model flags or unsupported fixed arguments hidden inside wrappers are rejected
+  and model selection must be moved to the provider `MODEL` setting;
+- conflicting permission modes are replaced or rejected;
+- the same structured executable and base arguments are used for tmux and
+  headless modes.
+
+Default provider executable names are treated as the installed official CLI
+entrypoints. A custom `EXECUTABLE` native binary is trusted as local
+configuration, while a custom script must use the strict shell form above to be
+verified.
+
+Configuration keys use the provider names `CODEX`, `CLAUDE`, `GROK`, and
+`ANTIGRAVITY`:
 
 ```text
-~/.local/state/llm-router-mcp
+LLM_ROUTER_MCP_<PROVIDER>_EXECUTABLE=/absolute/path/to/wrapper
+LLM_ROUTER_MCP_<PROVIDER>_BASE_ARGS=["--flag","value"]
+LLM_ROUTER_MCP_<PROVIDER>_PERMISSION_SOURCE=auto|router|launcher
+LLM_ROUTER_MCP_<PROVIDER>_MODEL=provider-model-or-alias
+LLM_ROUTER_MCP_<PROVIDER>_CWD=/default/provider/workdir
+LLM_ROUTER_MCP_TMUX_SOCKET_LABEL=optional-stable-label
 ```
 
-It contains:
+`BASE_ARGS` must be a JSON array of strings. Model flags are rejected there;
+use `LLM_ROUTER_MCP_<PROVIDER>_MODEL` so precedence remains unambiguous. Known
+options that take a value are also validated before transport-specific arguments
+are appended. `auto` is recommended. The old
+`LLM_ROUTER_MCP_<PROVIDER>_CMD` string is a tmux-only opaque escape hatch and
+is rejected by the full-bypass invariant unless the server is deliberately
+started with `LLM_ROUTER_MCP_ALLOW_UNVERIFIED_LAUNCHER=1`.
 
-- `inputs/` Markdown inputs
-- `requests/` generated internal prompts
-- `responses/` Markdown model outputs and raw logs
-- `workdirs/` scratch workdirs for each provider
+Run `llm_provider_doctor` after changing a launcher.
 
-Runtime state may contain private project details and model responses. Keep it
-outside the entire repository checkout and prune it periodically if it grows
-large. On a shared machine, protect that directory with permissions appropriate
-for private prompts and model output.
+## Markdown file transaction v2
+
+For each persistent request the router creates:
+
+```text
+requests/<provider>/<request-id>/
+├── request.md
+├── metadata.json
+├── response.md       # written by the provider
+└── done.json         # written last
+```
+
+Only this single-line instruction is typed into tmux:
+
+```text
+Read and follow the complete llm-router-mcp Markdown request at: /absolute/path/request.md
+```
+
+`done.json` identifies the provider, nonce, and request ID. The router validates
+all of them before accepting `response.md`. Pane start/done markers remain
+diagnostic by default. Legacy pane completion can be explicitly enabled with
+`LLM_ROUTER_MCP_ENABLE_PANE_FALLBACK=1`, but file completion is safer.
+
+Requests are serialized per session with a filesystem lock. A timeout keeps
+the session busy because the provider may still be working; call
+`llm_tmux_wait` again or use `llm_tmux_stop` to abandon/reset it. A changed
+model, launcher, cwd, bypass policy, or terminal specification is never silently
+applied to an existing session: stop the session first.
+
+## Runtime state and security
+
+State resolution order is:
+
+1. `LLM_ROUTER_MCP_STATE_DIR`
+2. absolute `XDG_STATE_HOME/llm-router-mcp`
+3. `~/.local/state/llm-router-mcp`
+
+The state includes `inputs/`, `requests/`, `sessions/`, and provider scratch
+`workdirs/`. It can contain private prompts and responses; do not commit or
+share it.
+
+By default, `inputPath` must resolve inside the managed state tree. Prefer
+`llm_write_input` or the inline `markdown` argument. External Markdown paths
+require the deliberate server opt-in
+`LLM_ROUTER_MCP_ALLOW_EXTERNAL_INPUT=1`.
+
+Additional boundaries:
+
+- session names allow only letters, numbers, `_`, and `-`;
+- the state-root path rejects control characters so the tmux file reference
+  remains exactly one line;
+- router sessions live on a state-specific `tmux -L
+  llm-router-<uid>-<state-hash>` socket started with `/dev/null` tmux config;
+- request IDs and files are created exclusively, with symlinks rejected;
+- command output, Markdown/JSON size, dimensions, capture length, and timeouts
+  are bounded;
+- persistent sessions default to at most 8, while headless calls per MCP server
+  process default to 2 total and 1 per provider (`LLM_ROUTER_MCP_MAX_SESSIONS`,
+  `LLM_ROUTER_MCP_MAX_HEADLESS_CALLS`,
+  `LLM_ROUTER_MCP_MAX_HEADLESS_PER_PROVIDER`);
+- headless timeouts terminate the process group with TERM then KILL;
+- raw provider argv is not returned by ordinary ask calls.
+
+Do not put credentials in launcher arguments. Environment variables or the
+provider's own credential store are safer.
 
 ## Troubleshooting
 
-**The MCP server does not appear in my client.** Restart the MCP client after
-editing config, confirm `node` is available to that client, and check the
-client's MCP server logs.
+Run the doctor first:
 
-**A provider CLI is not found.** The MCP inherits the `PATH` from the process
-that launched it, which can differ from your interactive shell. Use absolute
-paths or adjust the launching environment if needed.
-
-**A provider says authentication is required.** Log in with that provider's CLI
-outside the MCP first, then retry. This is especially common for fresh
-Antigravity CLI installs.
-
-**A persistent session is stuck.** Use `llm_tmux_capture` or attach directly:
-
-```bash
-tmux attach -t claude-mcp
+```text
+llm_provider_doctor()
 ```
 
-Then kill and recreate the session if needed:
+Use the exact `socketLabel` reported by the doctor when attaching:
 
 ```bash
-tmux kill-session -t claude-mcp
+tmux -L "<socketLabel-from-llm_provider_doctor>" list-sessions
+tmux -L "<socketLabel-from-llm_provider_doctor>" attach -t claude-mcp
 ```
 
-**A request timed out.** Check the returned fallback or raw response path. For
-long provider runs, prefer `llm_tmux_send` followed by `llm_tmux_wait` with a
-larger `timeoutMs`.
+Startup readiness uses an owned live-pane check plus a quiet stabilization
+window; it is deliberately conservative but remains best-effort because provider
+TUIs do not expose a common machine-readable ready signal. The default quiet
+window is 2 seconds and can be adjusted with
+`LLM_ROUTER_MCP_READY_SETTLE_MS` (250-10000).
 
-## Security Notes
+Common cases:
 
-- Run this as a local stdio server for trusted MCP clients, not as a remotely
-  exposed or multi-user service.
-- This MCP runs local CLIs with the same OS account privileges as the MCP
-  client. Those CLIs can read and write whatever that account can access.
-- Tool callers can supply Markdown `inputPath` values and override `stateDir`,
-  `cwd`, and the persistent-session `command`. A trusted caller can therefore
-  read Markdown files, write runtime artifacts, or launch provider commands
-  anywhere permitted to the OS account.
-- Provider commands use a scratch workdir under the external state directory by
-  default. Supplying `cwd` can expose a real project to provider reads and
-  writes, so review that override deliberately.
-- Do not commit runtime state. Inputs, generated prompts, raw responses, and
-  response Markdown files may contain private project details.
-- The default state directory is outside the repo:
-  `~/.local/state/llm-router-mcp`.
-- The package-local `.gitignore` excludes common state paths only when they are
-  created inside this package directory. It is defense in depth, not a
-  substitute for keeping state outside the complete checkout.
-- Some default launcher commands request non-interactive operation with
-  `--ask-for-approval never` or `--permission-mode dontAsk`. They do not grant
-  privileges beyond the provider CLI's active sandbox and permission policy,
-  but you should not expect an interactive confirmation step.
-- This MCP does not bypass provider login, provider policy, or model-side
-  refusal behavior.
-- Persistent `tmux` sessions preserve conversation context. Use
-  `llm_headless_ask` for sensitive one-off questions that should not enter a
-  long-lived provider session.
+- **Bypass unverified:** prefer the real executable or a strict one-line exec
+  wrapper, keep `PERMISSION_SOURCE=auto`, and rerun the doctor. An intentionally
+  opaque wrapper needs `PERMISSION_SOURCE=launcher` plus
+  `LLM_ROUTER_MCP_ALLOW_UNVERIFIED_LAUNCHER=1` and is not verified by the router.
+- **Session spec mismatch:** use `llm_tmux_stop`, then start/ask again.
+- **Session remains busy after timeout:** wait again if the provider is still
+  running, or stop it to abandon the request.
+- **Provider CLI not found:** the MCP client's PATH differs from the interactive
+  shell; configure an absolute `EXECUTABLE`.
+- **Authentication required:** log in with the provider CLI outside the MCP
+  first.
 
-Before staging or publishing changes, scan tracked files for accidental secrets:
+Before staging or publishing, scan tracked files for accidental credentials:
 
 ```bash
 grep -RInEi '(api[_-]?key|token|secret|password|authorization|bearer|oauth|credential|cookie|private[_-]?key)' \
   . --exclude-dir=node_modules --exclude-dir=.git --exclude=package-lock.json
-```
-
-For history scanning, use a dedicated tool such as
-[`trufflehog`](https://github.com/trufflesecurity/trufflehog) or
-[`git-secrets`](https://github.com/awslabs/git-secrets).
-
-## Useful Commands
-
-```bash
-tmux ls
-tmux attach -t codex-mcp
-tmux attach -t claude-mcp
-tmux attach -t grok-mcp
-tmux attach -t antigravity-mcp
-```
-
-Kill a session:
-
-```bash
-tmux kill-session -t grok-mcp
 ```

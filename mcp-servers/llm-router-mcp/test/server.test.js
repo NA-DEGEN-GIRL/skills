@@ -59,15 +59,26 @@ test("stdio MCP server exposes the unified LLM router tools", async () => {
     assert.deepEqual(names, [
       "llm_headless_ask",
       "llm_list_providers",
+      "llm_provider_doctor",
       "llm_tmux_ask",
       "llm_tmux_capture",
       "llm_tmux_send",
       "llm_tmux_start",
       "llm_tmux_status",
+      "llm_tmux_stop",
       "llm_tmux_wait",
       "llm_tmux_wait_start",
       "llm_write_input"
     ]);
+    const startTool = result.tools.find((tool) => tool.name === "llm_tmux_start");
+    assert.equal(Object.hasOwn(startTool.inputSchema.properties, "command"), false);
+    assert.equal(Object.hasOwn(startTool.inputSchema.properties, "stateDir"), false);
+    const capture = await client.callTool({
+      name: "llm_tmux_capture",
+      arguments: { provider: "claude" }
+    });
+    assert.equal(capture.isError, true);
+    assert.match(capture.content[0].text, /raw pane capture is disabled/);
   } finally {
     await client.close();
   }
@@ -78,9 +89,18 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
     return;
   }
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "llm-router-mcp-stdio-"));
+  const fakeClaude = path.join(tmp, "fake-claude");
+  const fakeClaudeReal = path.join(tmp, "fake-claude-real");
+  await fs.copyFile(FAKE_LLM, fakeClaudeReal);
+  await fs.chmod(fakeClaudeReal, 0o755);
+  await fs.writeFile(
+    fakeClaude,
+    `#!/bin/sh\nexec ${shellQuote(fakeClaudeReal)} "$@"\n`,
+    { mode: 0o755 }
+  );
   const sessionName = `lrm-stdio-${process.pid}-${Date.now()}`;
   t.after(async () => {
-    await killSession({ provider: "claude", sessionName });
+    await killSession({ provider: "claude", sessionName, stateDir: tmp });
     await fs.rm(tmp, { recursive: true, force: true });
   });
 
@@ -92,6 +112,12 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
     command: "node",
     args: [SERVER_ENTRYPOINT],
     cwd: PACKAGE_DIR,
+    env: {
+      ...process.env,
+      LLM_ROUTER_MCP_STATE_DIR: tmp,
+      LLM_ROUTER_MCP_READY_SETTLE_MS: "250",
+      LLM_ROUTER_MCP_CLAUDE_EXECUTABLE: fakeClaude
+    },
     stderr: "pipe"
   });
 
@@ -103,8 +129,7 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
         arguments: {
           provider: "claude",
           markdown: "End-to-end MCP request.",
-          filename: "stdio.md",
-          stateDir: tmp
+          filename: "stdio.md"
         }
       })
     );
@@ -116,9 +141,6 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
           provider: "claude",
           inputPath: written.inputPath,
           sessionName,
-          command: `node ${shellQuote(FAKE_LLM)}`,
-          cwd: PACKAGE_DIR,
-          stateDir: tmp,
           timeoutMs: 5000,
           pollMs: 50
         }
@@ -127,8 +149,9 @@ test("stdio MCP server can ask a provider through a tmux-backed fake session", a
 
     assert.equal(asked.completed, true);
     assert.equal(asked.timedOut, false);
+    assert.equal(asked.transport, "markdown-file-v2");
     assert.match(asked.answer, /fake tmux/);
-    assert.match(asked.responsePath, /\.response\.md$/);
+    assert.match(asked.responsePath, /\/response\.md$/);
     assert.match(await fs.readFile(asked.responsePath, "utf8"), /fake tmux/);
   } finally {
     await client.close();
