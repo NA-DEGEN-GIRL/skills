@@ -8,8 +8,8 @@ Prerequisite: install the matching skill from this repo, then restart/open a fre
 
 Most common use: **same LLM, clean context**. Save before `/clear`, then resume in a fresh session of the same agent. This prevents long-chat/context pollution while preserving the useful working state. Cross-agent transfer is optional.
 
-- **Save Mode**: before `/clear`, context reset, periodic context cleanup, or agent switch. Produces `.handoff/latest.md` and a dated backup.
-- **Resume Mode**: after `/clear`, in a fresh same-agent session, or in another compatible agent. Validates and reads `.handoff/latest.md`, then verifies actual repo state before continuing.
+- **Save Mode**: before `/clear`, context reset, periodic context cleanup, or agent switch. The canonical save helper produces an exclusive dated backup; an existing `latest.md` is updated only with its expected SHA-256 and an atomic exchange primitive.
+- **Resume Mode**: after `/clear`, in a fresh same-agent session, or in another compatible agent. The canonical selector validates `latest.md`, falls back to same-lane backups when needed, and returns one exact path to read before repo verification.
 
 Generated files live in the target project:
 
@@ -70,10 +70,11 @@ Expected behavior:
 
 1. Detect repo root.
 2. Run the safe state probe.
-3. Write `.handoff/latest.md` atomically when possible.
-4. Write `.handoff/YYYY-MM-DD-HHMMSS-codex.md`.
-5. Run backup pruning for `*-codex.md`.
-6. Report created files, probe inclusion, prune result, repo status, and recommended `/clear`.
+3. Pass the completed draft to `save_snapshot.py --agent codex`.
+4. Let the helper create the dated backup with `O_EXCL`, require the selected latest SHA-256, atomically exchange `latest.md`, verify parity, and prune retention.
+5. Report created files, probe inclusion, retention result, repo status, and recommended `/clear` only after a full success.
+
+Exit status 3 is a protected **backup-only** result caused by a missing/mismatched CAS, a recent different-agent conflict, or a non-cooperating writer race. In that case, `latest.md` was not updated: report the exact backup and do not imply that a normal Resume automatically selects it. Exit status 4 is a **partial post-write failure**: report the persisted backup and whether `latest.md` was replaced, then inspect parity/retention instead of claiming that nothing was saved.
 
 ## Codex: Resume After `/clear`
 
@@ -85,7 +86,7 @@ use codex-handoff
 
 Expected behavior:
 
-1. Validate `.handoff/latest.md` with `validate_snapshot.py`.
+1. Select a validated file with `select_snapshot.py` (`latest.md` first, then newest valid same-lane backup).
 2. Read repo instruction files such as `CODEX.md`, `AGENTS.md`, `CLAUDE.md` if present.
 3. Run the safe state probe.
 4. Open referenced files before editing.
@@ -99,10 +100,12 @@ use claude-handoff
 Codex가 이어받을 수 있게 현재 상태와 다음 액션을 .handoff/latest.md에 남겨줘.
 ```
 
-Expected backup:
+Expected writer and backup:
 
-```text
-.handoff/YYYY-MM-DD-HHMMSS-claude.md
+```bash
+python3 ~/.claude/skills/claude-handoff/scripts/save_snapshot.py --root . --agent claude --expect-no-latest < snapshot-draft.md
+# creates .handoff/YYYY-MM-DD-HHMMSS-claude.md and, on full success, latest.md
+# for an existing latest, replace --expect-no-latest with --expected-latest-sha256 <selected-hash>
 ```
 
 ## Claude Code: Resume From Codex Snapshot
@@ -166,7 +169,7 @@ The skill lists existing lanes (default plus each `.handoff/scopes/*/`) and asks
 .handoff/scopes/auth-refactor/YYYY-MM-DD-HHMMSS-codex.md
 ```
 
-There is no lock in v1; keep one writer per scope.
+The save helper uses an OS advisory per-lane lock that auto-releases on process exit plus mandatory content-hash CAS for an existing latest; an unlocked leftover `.save.lock` file is safely reused. Keep one logical writer per scope anyway; non-cooperating tools can still create a conflict, which is reported as backup-only rather than silently replacing `latest.md`.
 
 ## Optional: Add Repo Rule
 
@@ -204,7 +207,27 @@ python3 ~/.claude/skills/claude-handoff/scripts/handoff_snapshot.py --root .
 ### Validate snapshot before reading
 
 ```bash
-python3 ~/.codex/skills/codex-handoff/scripts/validate_snapshot.py .handoff/latest.md
+python3 ~/.codex/skills/codex-handoff/scripts/validate_snapshot.py .handoff/latest.md --root .
+# scoped diagnostic:
+python3 ~/.codex/skills/codex-handoff/scripts/validate_snapshot.py .handoff/scopes/auth-refactor/latest.md --root . --scope auth-refactor
+```
+
+### List and select lanes
+
+```bash
+python3 ~/.codex/skills/codex-handoff/scripts/list_lanes.py --root .
+python3 ~/.codex/skills/codex-handoff/scripts/select_snapshot.py --root .
+python3 ~/.codex/skills/codex-handoff/scripts/select_snapshot.py --root . --scope auth-refactor
+```
+
+`list_lanes.py` includes safe backup-only/orphan lanes. `select_snapshot.py` always prefers a valid `latest.md`; only when that is missing or invalid does it try valid timestamped backups newest-first in the selected lane.
+
+### Canonical save helper
+
+```bash
+python3 ~/.codex/skills/codex-handoff/scripts/save_snapshot.py --root . --agent codex --expect-no-latest < snapshot-draft.md
+# scoped save; when replacing inspected latest, pass its reported SHA-256:
+python3 ~/.codex/skills/codex-handoff/scripts/save_snapshot.py --root . --agent codex --scope auth-refactor --expected-latest-sha256 "$EXPECTED_SHA256" < snapshot-draft.md
 ```
 
 ### Prune old backups
@@ -249,3 +272,7 @@ use claude-handoff in Resume Mode: latest.md 검증하고 이어받아.
 ```
 
 Also avoid asking the agent to paste raw diffs or secrets into `.handoff/latest.md`. If raw diff detail is necessary, redact it first.
+
+## Platform Safety
+
+Snapshot file operations require secure directory-fd traversal and fail closed when unavailable. Existing-latest replacement additionally requires Linux `renameat2(RENAME_EXCHANGE)` or macOS `renameatx_np(RENAME_SWAP)`; when a valid update would need that primitive but it is unavailable, Save fails before writing the dated backup or `latest.md`. Backup-only CAS/conflict paths do not attempt replacement.

@@ -1,6 +1,6 @@
 # Useful Skills
 
-This repository stores portable, agent-installable skill packages grouped by skill family. It is intended to grow beyond the current handoff skills without changing the install contract for existing packages.
+This repository stores portable, agent-installable skill packages grouped by capability family. It currently covers idea shaping, quality-gate bootstrap, session handoff, subagent design, repo instructions, and read-only repo orientation without changing the package layout contract.
 
 ## Skills at a glance
 
@@ -10,7 +10,7 @@ This repository stores portable, agent-installable skill packages grouped by ski
 |---|---|---|---|
 | `distill-ramble` | Codex + Claude | 마이크/대화로 떠든 raw thought를 seed 문장으로 압축 | "마이크로 떠드는 걸 정리해줘" · "seed 문장으로 만들어줘" |
 | `shape-idea` | Codex + Claude | 모호한 만들기 아이디어를 질문·기술 fork 번역·Design Brief로 구체화 | "아이디어 구체화해줘" · "먼저 설계" |
-| `codex-init-gate` | Codex | LLM-debuggable check-only `make check` 품질 게이트 설치 | "게이트 깔아줘" · "scaffold checks" |
+| `codex-init-gate` | Codex | 선택된 runner에 LLM-debuggable check-only 품질 게이트 구성 | "게이트 깔아줘" · "scaffold checks" |
 | `claude-init-gate` | Claude Code | 위와 동일 (Claude Code용) | "게이트 깔아줘" · "scaffold checks" |
 | `codex-handoff` | Codex | 세션 작업 스냅샷 저장/재개 (`.handoff/`) — `/clear` 전후 맥락 유지 | "handoff 저장해줘" · "이어받아" |
 | `claude-handoff` | Claude Code | 위와 동일 (Claude Code용) | "handoff 저장해줘" · "이어받아" |
@@ -20,11 +20,11 @@ This repository stores portable, agent-installable skill packages grouped by ski
 
 각 스킬은 `use <스킬이름>` 또는 위 트리거 문구로 부릅니다. `idea-shaping`은 raw voice or freeform thought를 seed 문장으로 정리한 뒤 계획 전 결정/이유를 Design Brief로 구체화하는 용도이고, `repo-bootstrap`은 LLM이 수정·디버깅하기 쉬운 품질 게이트 초기화가 주 용도이며, `handoff`는 같은 agent 내 맥락 위생이 주 용도입니다. `distill-ramble`, `shape-idea`, `orient-repo`는 Codex·Claude 공용입니다.
 
-Current repository version: `0.1.10`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
+Current repository version: `0.1.11`. The root `VERSION` is the monorepo release marker; current package versions intentionally match it.
 
 **LLM installers:** read [`INSTALL.md`](INSTALL.md) first. It is the stable entrypoint for an agent that receives only this repo URL and is asked to install the matching skill(s).
 
-**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, or browse [`skills/README.md`](skills/README.md). For concrete usage examples, read [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md), [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md), [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
+**Humans/users:** start with [`USER_GUIDE.md`](USER_GUIDE.md) for a per-skill walkthrough, browse [`skills/README.md`](skills/README.md), and use [`CHANGELOG.md`](CHANGELOG.md) for release-level changes. For concrete usage examples, read [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md), [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md), [`skills/handoff/USAGE.md`](skills/handoff/USAGE.md), [`skills/subagents/USAGE.md`](skills/subagents/USAGE.md), [`skills/repo-instructions/USAGE.md`](skills/repo-instructions/USAGE.md), or [`skills/repo-orientation/USAGE.md`](skills/repo-orientation/USAGE.md).
 
 ## Contents
 
@@ -33,12 +33,15 @@ useful-skills/
 ├── VERSION
 ├── README.md
 ├── INSTALL.md              # LLM-first install entrypoint
+├── CHANGELOG.md            # repository release notes
 ├── AGENTS.md               # repo-local agent instructions
 ├── LLM_CONTEXT.md          # maintainer context for future agents
 ├── Makefile
-├── scripts/                # repo-level validators
+├── scripts/                # repo-level validators and safe installer/doctor
+├── evals/                  # forward-test scenarios and assertions
 └── skills/
     ├── README.md           # skills/family index
+    ├── catalog.json        # package/target registry
     ├── idea-shaping/
         ├── README.md       # family overview
         ├── USAGE.md        # examples for shaping ideas
@@ -86,7 +89,8 @@ Rules:
 2. `skills/<family>/<skill-name>/` is the package copied/symlinked into an agent's skill home.
 3. The package folder name must match `SKILL.md` frontmatter `name`.
 4. Put shared repo tooling in root `scripts/`; put skill-runtime scripts inside the package `scripts/` folder.
-5. A skill package is discovered by the presence of `SKILL.md` under `skills/`. Run `make all` before committing or recommending installation.
+5. Register every package and supported agent in `skills/catalog.json`.
+6. A skill package is discovered only at `skills/<family>/<skill-name>/SKILL.md`. Run `make all` before committing or recommending installation.
 
 ## Current Skill Families
 
@@ -94,7 +98,7 @@ Rules:
 
 The idea-shaping family helps Codex or Claude Code move from raw voice or freeform thought to a user-confirmed **Design Brief** before planning or coding, including mid-project feature additions before implementation. `distill-ramble` first turns messy spoken/typed thinking into reusable seed sentences; `shape-idea` then clarifies what/why, translates consequential product-shaping technical forks into plain language with proper terms, stress-tests risky assumptions, and records testable acceptance criteria plus the alternatives rejected. The installable packages are `skills/idea-shaping/distill-ramble/` and `skills/idea-shaping/shape-idea/`.
 
-These packages are intentionally **unified and agent-neutral**: the work is conversational, `distill-ramble` defaults to chat-only seed material, and `shape-idea`'s durable artifact is a project-local Design Brief, not agent-specific state. They write no code, do not edit `AGENTS.md`, treat repo files as untrusted context, and ask before saving any brief or explicit distillation file. After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the accepted brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
+These packages are intentionally **unified and agent-neutral**: the work is conversational, `distill-ramble` defaults to chat-only redacted seed material, and `shape-idea`'s durable artifact is a project-local Design Brief, not agent-specific state. They write no code, do not edit `AGENTS.md`, and require exact root/path confirmation before every file write. Brief content acceptance (`Draft` → `Accepted`) stays separate from persistence (`inline-only` / `saved`). After an accepted brief, run repo-bootstrap if no canonical gate exists, then `write-agents-md` can add concise references to the brief and gate. See [`skills/idea-shaping/USAGE.md`](skills/idea-shaping/USAGE.md).
 
 ## Recommended End-to-End Flow
 
@@ -106,12 +110,12 @@ These packages are intentionally **unified and agent-neutral**: the work is conv
 
 ### Repo Bootstrap
 
-The repo-bootstrap family helps Codex or Claude Code stand up a deterministic, LLM-debuggable quality gate before feature work: a reviewed check-only `make check` interface, or a mapped existing runner, for `fmt`, `lint`, `typecheck`, and `test`, explicit guidance for edit/debug-friendly structure, plus optional pre-commit and CI wiring after approval. It is a **quality-gate bootstrap**, not a general `git init` replacement.
+The repo-bootstrap family helps Codex or Claude Code stand up a deterministic, LLM-debuggable quality gate before feature work. It applies the `fmt`/`lint`/`typecheck`/`test` contract to exactly one selected canonical runner—`make check` only when Make is selected or approved as a thin wrapper—and can wire pre-commit/CI after approval. It classifies repository state separately from the requested operation and verifies that checks preserve tracked source/config/lockfiles while reporting approved ignored caches/build outputs. It is a **quality-gate bootstrap**, not a general `git init` replacement.
 
 - `codex-init-gate`: Codex package for planning, scaffolding, and verifying the gate with a Codex self-correct loop.
 - `claude-init-gate`: Claude Code counterpart; hook/settings wiring must be confirmed against current Claude Code docs or user-provided config before writing.
 
-Primary workflow: inspect stack, command bodies, existing runner, and code-structure signals → classify (`fresh-repo`, `existing-repo`, `add-stack`, `verify-only`) → plan enforceable vs advisory LLM-debuggable rules → approve → apply → run the reviewed canonical check path. See [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md).
+Primary workflow: inspect stack, command bodies, existing runner, and code-structure signals → classify `repo_state` (`empty-repo`, `fresh-repo`, `existing-repo`) separately from `operation` (`scaffold`, `add-stack`, `verify-only`) → plan enforceable vs advisory LLM-debuggable rules → approve → apply → run the reviewed canonical check path. See [`skills/repo-bootstrap/USAGE.md`](skills/repo-bootstrap/USAGE.md).
 
 ### Handoff
 
@@ -136,17 +140,17 @@ For parallel multi-agent work, handoff also supports optional named **scopes** (
 
 The subagents family helps Codex inspect a repository and decide how to use explorer, worker, and verification subagents safely. The installable package is `skills/subagents/design-repo-subagents/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
 
-Primary workflow: repo-grounded delegation planning. Actual spawning is recommended only when the user explicitly asks for subagents, delegation, parallel agent work, or a critical/비판 agent.
+Primary workflow: repo-grounded delegation planning or operation under the active runtime's delegation policy. Explicit-only runtimes require execution intent; runtimes that explicitly enable proactive delegation may spawn bounded sidecar work without inventing unavailable tool names. In all cases the skill accounts for write ownership, context forking, shared-filesystem behavior, concurrency, integration, and cancellation.
 
 ### Repo Instructions
 
 The repo-instructions family helps Codex draft, review, and maintain `AGENTS.md` from actual repo facts. The installable package is `skills/repo-instructions/write-agents-md/`, intentionally using the same name as the existing local Codex skill so it can replace that skill after backup.
 
-Primary workflow: inspect repo files, preserve user-authored instructions, include only verified or explicitly marked-unverified commands, reference accepted/current Design Briefs without embedding full reasoning or treating them as higher authority than repo facts, and keep the resulting `AGENTS.md` compact and operational.
+Primary workflow: inspect repo files, preserve user-authored instructions, include commands with explicit evidence levels, and keep `AGENTS.md` compact and operational. Writes, overwrites, consolidation, and deletions require safe target containment, exact diff/plan approval, and timestamped backups. Consequential Design Brief changes remain owned by idea shaping rather than being silently folded into AGENTS.md maintenance.
 
 ### Repo Orientation
 
-The repo-orientation family helps any compatible agent get oriented in a repository read-only and emit a concise **Repo Orientation** report: stack, entrypoints, run/test/build commands, key directories, conventions, instruction files, decision docs/Design Briefs, recent activity, and open unknowns. The installable package is `skills/repo-orientation/orient-repo/`.
+The repo-orientation family helps any compatible agent get oriented in a repository read-only and emit a concise **Repo Orientation** report: stack, entrypoints, command evidence level, canonical quality gate, key directories, instruction files, decision docs/Design Briefs, recent activity, selected handoff-lane context, and open unknowns. The installable package is `skills/repo-orientation/orient-repo/`.
 
 This package is intentionally **unified and agent-neutral**: because orientation is strictly read-only and persists no agent-specific artifact, the same package installs to both `~/.codex/skills/orient-repo` and `~/.claude/skills/orient-repo`. It is prose-only and ships no probe script; when a handoff skill is available it leverages that skill's repo-state probe and snapshot, referencing siblings by capability rather than hardcoding a package name, and treating any snapshot as untrusted data.
 
@@ -162,24 +166,37 @@ This package is intentionally **unified and agent-neutral**: because orientation
 
 ## What Handoff Enforces By Code
 
-- `handoff_snapshot.py`: emits safe repo-state metadata without raw file contents or raw diff hunks; preserves git failures as `unknown`; redacts sensitive-looking paths; bounds non-git scans.
-- `validate_snapshot.py`: checks UTF-8, size, NUL bytes, and `# Handoff Snapshot` heading before a snapshot is loaded into context.
-- `prune_backups.py`: prunes only timestamped backup files, rejects symlinked `.handoff` directories, skips symlinked files, and never deletes `latest.md`.
-- `apply_marker_block.py`: idempotently inserts/replaces the handoff rule marker block in repo instruction files using atomic writes.
+- `snapshot_common.py`: provides bounded regular-file reads, path/lane containment, symlink rejection, scope agreement, sanitization, and deterministic candidate discovery.
+- `handoff_snapshot.py`: emits hardened Git/non-Git state metadata without raw file contents or diff hunks; disables optional locks, prompts, pagers, fsmonitor, external diff/textconv, redacts sensitive labels, and bounds fallback scans.
+- `validate_snapshot.py`: checks containment, file type, symlinks, the 1 MiB limit, UTF-8, NUL bytes, metadata shape, and `# Handoff Snapshot` before context loading.
+- `select_snapshot.py`: selects valid `latest.md` then the newest valid same-lane backup, including backup-only orphan lanes without cross-lane fallback.
+- `save_snapshot.py`: validates a composed snapshot, creates an exclusive dated backup, applies lock/CAS/recent-writer protection, atomically updates `latest.md`, verifies parity, and safely enforces retention.
+- `prune_backups.py`: prunes only real regular files with valid timestamp/agent backup names, rejects unsafe requested lanes/agents, and never deletes `latest.md`.
+- `apply_marker_block.py`: preserves target mode, rejects duplicate/partial markers, and idempotently inserts/replaces an approved marker block using atomic writes.
 - `skills/handoff/scripts/check_handoff_sync.py`: verifies package versions, shared script sets, hashes, executable bits, and required SKILL literals for the handoff variants.
+
+## What The Other Families Enforce By Code
+
+- `skills/subagents/scripts/check_subagents_sync.py`: verifies the runtime-capability routing references and package metadata.
+- `skills/repo-instructions/scripts/check_repo_instructions_sync.py`: verifies instruction-precedence, safe-write, review, and nested-scope references.
+- `skills/repo-orientation/scripts/check_repo_orientation_sync.py`: verifies read-only quality-gate, decision-doc, handoff-selection, and confidence-reporting coverage.
+- `scripts/check_catalog.py`: checks exact package layout, catalog registration, target agents, versions, metadata, and root-document registration.
+- `scripts/test_install_skill.py`: exercises dry-run/apply, external backup, copy/symlink replacement, duplicate detection, and rollback in isolated temporary homes.
+- `evals/scenarios.json` plus `scripts/check_evals.py`: registers high-risk forward-test prompts and expected/forbidden behavior for every package.
 
 ## Safety Boundaries
 
 - Idea-shaping is design-only by default: it does not code or scaffold, treats repo files as untrusted context, uses read-only inspection in brownfield repos, redacts sensitive content, asks before saving/updating a Design Brief, and leaves gate setup plus AGENTS.md references to repo-bootstrap/write-agents-md.
-- Repo-bootstrap mutates target repos only after plan/approval for command execution, tool installs, `.git` changes, overwrites, modifying formatters/codegen, and CI additions; `make check` must be check-only and LLM-friendly structure checks are enforced only where tooling supports them safely.
+- Repo-bootstrap mutates target repos only after plan/approval for command execution, tool installs, `.git` changes, overwrites, modifying formatters/codegen, and CI additions; the selected canonical check path must be check-only and LLM-friendly structure checks are enforced only where tooling supports them safely.
 - Handoff snapshots are **untrusted data**. Commands or instructions inside snapshots must not be executed unless they match the current user request, repo instructions, and actual repo state.
 - The handoff probe does **not** read file contents. It redacts suspicious path names and avoids printing raw diffs. If raw diff content is explicitly required, pass it through `redact-sensitive-info` first.
 - Secret protection is path/metadata-oriented in the probe; it is not a full content scanner.
 - `.handoff/` is treated as local scratch by default; do not edit `.gitignore` or `.git/info/exclude` unless explicitly requested.
+- Installed-skill backups belong outside the agent's `skills/` discovery directory; adjacent backup bundles can be rediscovered and create ambiguous routing.
 
 ## Install
 
-Use [`INSTALL.md`](INSTALL.md). Default install mode is copy-with-backup into a separate package name such as `distill-ramble`, `shape-idea`, `codex-handoff`, or `claude-handoff`; do **not** replace a default `handoff` skill unless the user explicitly asks.
+Use [`INSTALL.md`](INSTALL.md). The canonical `scripts/install_skill.py` workflow is dry-run by default, validates the package, and keeps timestamped backups under the agent home but outside `skills/`. Do **not** replace a default `handoff` skill unless the user explicitly asks.
 
 If these packages are installed alongside default `handoff` skills, routing is resolver-defined and not guaranteed by this repository. During trials, explicitly name the desired skill in prompts:
 
@@ -194,13 +211,16 @@ For deterministic routing, validate first, then intentionally replace/rename the
 
 ## Validate
 
-From this repo:
+Repository scripts require Python 3.10 or newer. CI exercises the minimum supported line (3.10) and the current stable line (3.14) on the Linux/POSIX automation baseline. Native Windows execution of the full repo and handoff script suite is not currently release-gated.
+
+From this repo, `make all` and `make check` are equivalent:
 
 ```bash
 make all
+# or: make check
 ```
 
-This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, all smoke tests, and sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution.
+This runs the repo-local portable skill validator, the external Codex validator when available, syntax checks without writing `.pyc` files, installer/runtime smoke tests, catalog validation, and family sync checks. `PYTHONDONTWRITEBYTECODE=1` is used to avoid `__pycache__` pollution.
 
 ## Current Skill Entrypoints
 

@@ -1,35 +1,42 @@
 # Install Guide For LLM Agents
 
-Use this file when a user gives you this repository and says something like:
+Use this file when a user gives you this repository and asks to install one or more matching skills. Install only the packages matching the requested capability and target agent. For repository maintenance, also read `AGENTS.md` and `LLM_CONTEXT.md`.
 
-```text
-Install the matching skill(s) from https://github.com/NA-DEGEN-GIRL/skills.git
-```
+`skills/catalog.json` is the machine-readable package registry. This document explains the user-facing policy; `scripts/install_skill.py` implements the safe install, doctor, and rollback operations.
 
-This is the stable LLM-first entrypoint. The repository may contain multiple skill families over time; install only the package(s) matching the user's target agent and requested capability. For maintenance or repo editing, also read `LLM_CONTEXT.md`.
+Repository validation and installer scripts require Python 3.10 or newer. The automated release baseline is Linux/POSIX (Ubuntu CI with GNU Make); native Windows execution of the full repo and handoff script suite is not currently release-gated, so do not claim end-to-end Windows support from this repository.
 
-## Current Installable Packages
+## Current Packages
 
-| Capability | Target agent | Source folder | Install destination |
-|---|---|---|---|
-| idea-shaping | Codex | `skills/idea-shaping/distill-ramble/` | `${CODEX_HOME:-$HOME/.codex}/skills/distill-ramble` |
-| idea-shaping | Claude Code | `skills/idea-shaping/distill-ramble/` | `$HOME/.claude/skills/distill-ramble` |
-| idea-shaping | Codex | `skills/idea-shaping/shape-idea/` | `${CODEX_HOME:-$HOME/.codex}/skills/shape-idea` |
-| idea-shaping | Claude Code | `skills/idea-shaping/shape-idea/` | `$HOME/.claude/skills/shape-idea` |
-| repo-bootstrap | Codex | `skills/repo-bootstrap/codex-init-gate/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate` |
-| repo-bootstrap | Claude Code | `skills/repo-bootstrap/claude-init-gate/` | `$HOME/.claude/skills/claude-init-gate` |
-| handoff | Codex | `skills/handoff/codex-handoff/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff` |
-| handoff | Claude Code | `skills/handoff/claude-handoff/` | `$HOME/.claude/skills/claude-handoff` |
-| subagents | Codex | `skills/subagents/design-repo-subagents/` | `${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents` |
-| repo-instructions | Codex | `skills/repo-instructions/write-agents-md/` | `${CODEX_HOME:-$HOME/.codex}/skills/write-agents-md` |
-| repo-orientation | Codex | `skills/repo-orientation/orient-repo/` | `${CODEX_HOME:-$HOME/.codex}/skills/orient-repo` |
-| repo-orientation | Claude Code | `skills/repo-orientation/orient-repo/` | `$HOME/.claude/skills/orient-repo` |
+| Capability | Target agent | Package | Source folder | Destination |
+|---|---|---|---|---|
+| idea-shaping | Codex + Claude Code | `distill-ramble` | `skills/idea-shaping/distill-ramble/` | `<agent-home>/skills/distill-ramble` |
+| idea-shaping | Codex + Claude Code | `shape-idea` | `skills/idea-shaping/shape-idea/` | `<agent-home>/skills/shape-idea` |
+| repo-bootstrap | Codex | `codex-init-gate` | `skills/repo-bootstrap/codex-init-gate/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate` |
+| repo-bootstrap | Claude Code | `claude-init-gate` | `skills/repo-bootstrap/claude-init-gate/` | `$HOME/.claude/skills/claude-init-gate` |
+| handoff | Codex | `codex-handoff` | `skills/handoff/codex-handoff/` | `${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff` |
+| handoff | Claude Code | `claude-handoff` | `skills/handoff/claude-handoff/` | `$HOME/.claude/skills/claude-handoff` |
+| subagents | Codex | `design-repo-subagents` | `skills/subagents/design-repo-subagents/` | `${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents` |
+| repo-instructions | Codex | `write-agents-md` | `skills/repo-instructions/write-agents-md/` | `${CODEX_HOME:-$HOME/.codex}/skills/write-agents-md` |
+| repo-orientation | Codex + Claude Code | `orient-repo` | `skills/repo-orientation/orient-repo/` | `<agent-home>/skills/orient-repo` |
 
-Do **not** replace existing default `handoff` skills unless the user explicitly asks for replacement. Install the current handoff packages as separate `codex-handoff` / `claude-handoff` skills by default. The subagents and repo-instructions packages intentionally use existing skill names; back up any same-name destination before replacing it.
+For the shared packages, `<agent-home>` is `${CODEX_HOME:-$HOME/.codex}` for Codex and `$HOME/.claude` for Claude Code.
 
-## Quick Install From Repo URL
+## Safety Policy
 
-If you are not already inside the cloned repo:
+- Validate the repository before installing: `make all`.
+- The installer is **dry-run by default**. Mutation requires `--apply`.
+- Existing same-name packages are moved to `<agent-home>/skill-backups/<name>/<timestamp>/payload`, outside the `skills/` discovery tree. Do not put backups beside live packages: resolvers may rediscover their `SKILL.md` and create duplicate routing.
+- Package trees containing symlinks or special files are rejected; installable payloads must contain only real directories and regular files.
+- Mutating install/rollback operations take a fixed per-agent/per-skill advisory lock under `<agent-home>/skill-locks/`, independent of any backup-root override.
+- Do not replace a default package named `handoff`. Install these variants as `codex-handoff` or `claude-handoff` unless the user explicitly requests a different migration.
+- `design-repo-subagents` and `write-agents-md` intentionally use common existing names. Replace them only when the user explicitly requested that package; the installer backs up the old destination first.
+- Do not edit installed global skills merely because this repository was opened. Installation must match the user's explicit target agent and package request.
+- Use symlink mode only when the clone path is persistent and the user wants installed behavior to track this working copy.
+
+## Quick Clone And Validate
+
+If the repository is not already present:
 
 ```bash
 tmpdir=$(mktemp -d)
@@ -37,286 +44,176 @@ git clone --depth 1 https://github.com/NA-DEGEN-GIRL/skills.git "$tmpdir/skills"
 cd "$tmpdir/skills"
 ```
 
-Validate before installing. A package is discovered by a `SKILL.md` file under `skills/`; current validation also runs family-specific sync checks such as `skills/handoff/scripts/check_handoff_sync.py`, `skills/idea-shaping/scripts/check_idea_shaping_sync.py`, and `skills/repo-bootstrap/scripts/check_repo_bootstrap_sync.py`.
+Inspect the package registry and run the complete gate:
 
 ```bash
+cat skills/catalog.json
 make all
 ```
 
-## Choose What To Install
+`make all` runs the local and optional external skill validators, Python syntax checks, smoke tests, catalog checks, and family sync checks without writing `.pyc` files.
 
-1. Identify the user's target agent: Codex, Claude Code, both, or another compatible skill system.
-2. Identify the requested capability/family, e.g. `handoff`. If the user only says "useful skills" and gives no capability, show the table above and ask which ones to install.
-3. Install only matching packages. Currently:
-   - Codex and/or Claude Code + idea-shaping: install `distill-ramble` and/or `shape-idea` (same source folders for both agents) to each chosen agent's skill home; both are agent-neutral.
-   - Codex + repo-bootstrap: install `codex-init-gate` only.
-   - Claude Code + repo-bootstrap: install `claude-init-gate` only.
-   - Both + repo-bootstrap: install both init-gate packages.
-   - Codex + handoff: install `codex-handoff` only.
-   - Claude Code + handoff: install `claude-handoff` only.
-   - Both + handoff: install both.
-   - Codex + subagents: install `design-repo-subagents`.
-   - Codex + repo-instructions: install `write-agents-md`.
-   - Codex and/or Claude Code + repo-orientation: install `orient-repo` (same source folder) to each chosen agent's skill home; it is agent-neutral.
-4. If the target agent is unclear, ask one short question: `Codex용, Claude용, 둘 다 중 무엇을 설치할까요?`
+## Choose Packages
 
-## Safe Copy Install Commands
+1. Identify the target agent: Codex, Claude Code, or both.
+2. Identify the requested capability/package.
+3. Select only catalog entries whose `targets` include that agent.
+4. If the target is unclear, ask: `Codex용, Claude용, 둘 다 중 무엇을 설치할까요?`
+5. If the capability is unclear, show the package table instead of installing everything.
 
-Copy install is safest when this repo was cloned into a temp directory. It backs up any existing same-name install path and does not touch default `handoff`.
+Typical selections:
 
-### Codex idea-shaping: distill-ramble
+- Raw thoughts/voice cleanup: `distill-ramble`
+- Idea shaping and Design Briefs: `shape-idea`
+- Quality gate setup: `codex-init-gate` or `claude-init-gate`
+- Session handoff: `codex-handoff` or `claude-handoff`
+- Codex subagent planning/operation: `design-repo-subagents`
+- Codex AGENTS.md drafting/review: `write-agents-md`
+- Read-only repository tour: `orient-repo`
 
-```bash
-src="$PWD/skills/idea-shaping/distill-ramble"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/distill-ramble"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
-```
+## Canonical Installer
 
-### Claude Code idea-shaping: distill-ramble
+Preview a copy install:
 
 ```bash
-src="$PWD/skills/idea-shaping/distill-ramble"
-dest="$HOME/.claude/skills/distill-ramble"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py install \
+  --agent codex \
+  --skill orient-repo
 ```
 
-### Codex idea-shaping: shape-idea
+Apply it after reviewing the source, destination, validation result, and backup root:
 
 ```bash
-src="$PWD/skills/idea-shaping/shape-idea"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/shape-idea"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py install \
+  --agent codex \
+  --skill orient-repo \
+  --apply
 ```
 
-### Claude Code idea-shaping: shape-idea
+Claude Code example:
 
 ```bash
-src="$PWD/skills/idea-shaping/shape-idea"
-dest="$HOME/.claude/skills/shape-idea"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py install \
+  --agent claude \
+  --skill shape-idea \
+  --apply
 ```
 
-### Codex repo-bootstrap
+Install for both agents by running one reviewed command per target:
 
 ```bash
-src="$PWD/skills/repo-bootstrap/codex-init-gate"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py install --agent codex  --skill distill-ramble --apply
+python3 scripts/install_skill.py install --agent claude --skill distill-ramble --apply
 ```
 
-### Claude Code repo-bootstrap
+### Optional Symlink Mode
+
+Preview first, then apply:
 
 ```bash
-src="$PWD/skills/repo-bootstrap/claude-init-gate"
-dest="$HOME/.claude/skills/claude-init-gate"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py install \
+  --agent codex \
+  --skill codex-handoff \
+  --mode symlink
+
+python3 scripts/install_skill.py install \
+  --agent codex \
+  --skill codex-handoff \
+  --mode symlink \
+  --apply
 ```
 
-### Codex handoff
+The installer replaces an existing destination as one entry; it does not use `ln -sfn`, which can accidentally create a nested link when the destination is already a directory.
+
+### Non-Default Agent Home
+
+For isolated tests or a custom home:
 
 ```bash
-src="$PWD/skills/handoff/codex-handoff"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py install \
+  --agent codex \
+  --skill orient-repo \
+  --agent-home /reviewed/custom/codex-home \
+  --apply
 ```
 
-### Claude Code handoff
+## Read-Only Installed-State Doctor
+
+Compare installed package versions with this checkout and report discoverable duplicates:
 
 ```bash
-src="$PWD/skills/handoff/claude-handoff"
-dest="$HOME/.claude/skills/claude-handoff"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py doctor --agent codex
+python3 scripts/install_skill.py doctor --agent claude
 ```
 
-### Codex subagents
+Limit the check to one package:
 
 ```bash
-src="$PWD/skills/subagents/design-repo-subagents"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py doctor --agent codex --skill orient-repo
 ```
 
-### Codex repo-instructions
+A non-zero result means at least one requested package is missing, stale, invalid, or duplicated. `doctor` does not modify installed files.
+
+## Rollback
+
+Preview restoration of the newest external backup:
 
 ```bash
-src="$PWD/skills/repo-instructions/write-agents-md"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/write-agents-md"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py rollback \
+  --agent codex \
+  --skill design-repo-subagents
 ```
 
-### Codex repo-orientation
+Apply after review:
 
 ```bash
-src="$PWD/skills/repo-orientation/orient-repo"
-dest="${CODEX_HOME:-$HOME/.codex}/skills/orient-repo"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
+python3 scripts/install_skill.py rollback \
+  --agent codex \
+  --skill design-repo-subagents \
+  --apply
 ```
 
-### Claude Code repo-orientation
+Use `--backup <timestamp-directory>` to select a specific backup. Backup metadata binds the record to the exact skill/destination and entry type, so rollback can restore the arbitrary directory, file, or symlink that existed before installation rather than requiring it to already be a valid skill. Before restoration, the installer backs up the current destination to a new external backup, so rollback remains reversible.
 
-```bash
-src="$PWD/skills/repo-orientation/orient-repo"
-dest="$HOME/.claude/skills/orient-repo"
-mkdir -p "$(dirname "$dest")"
-if [ -L "$dest" ]; then
-  rm "$dest"
-elif [ -e "$dest" ]; then
-  mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-fi
-cp -a "$src" "$dest"
-```
+## Manual Fallback
 
-## Rollback Same-Name Replacement
+Use this only when `scripts/install_skill.py` cannot run.
 
-Copy install backs up an existing same-name destination to `$dest.bak.<timestamp>`. To roll back, remove the new directory and move the backup back into place, for example:
+1. Confirm the package in `skills/catalog.json` targets the requested agent.
+2. Run `make all` or at minimum `python3 scripts/validate_skill.py <source-folder>`.
+3. Choose the exact destination from the table.
+4. Move any existing destination to an explicitly reviewed backup directory **outside** `<agent-home>/skills/`.
+5. Copy the whole package directory with metadata preserved.
+6. Confirm destination `SKILL.md` name and `VERSION` match the source.
+7. Scan `<agent-home>/skills/` for other discoverable `SKILL.md` files with the same frontmatter `name`.
 
-```bash
-dest="${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents"
-backup="${dest}.bak.YYYYMMDDHHMMSS"
-rm -rf "$dest"
-mv "$backup" "$dest"
-```
+Do not use an adjacent `<dest>.bak.<timestamp>` directory and do not use raw `ln -sfn` over an existing directory.
 
-Restart the target agent after rollback.
+## Future Packages
 
-## Optional Symlink Install
+When adding a package:
 
-Use symlinks only if the clone path is persistent and the user wants updates to track the working copy.
+1. Put it at `skills/<family>/<skill-name>/SKILL.md`.
+2. Add exactly one entry to `skills/catalog.json` with its supported targets.
+3. Update human-facing indexes and examples.
+4. Run `make all`; `scripts/check_catalog.py` verifies discovery, versions, metadata, and root documentation registration.
 
-```bash
-# Codex idea-shaping: distill-ramble
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/idea-shaping/distill-ramble" "${CODEX_HOME:-$HOME/.codex}/skills/distill-ramble"
-
-# Claude Code idea-shaping: distill-ramble
-mkdir -p "$HOME/.claude/skills"
-ln -sfn "$PWD/skills/idea-shaping/distill-ramble" "$HOME/.claude/skills/distill-ramble"
-
-# Codex idea-shaping: shape-idea
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/idea-shaping/shape-idea" "${CODEX_HOME:-$HOME/.codex}/skills/shape-idea"
-
-# Claude Code idea-shaping: shape-idea
-mkdir -p "$HOME/.claude/skills"
-ln -sfn "$PWD/skills/idea-shaping/shape-idea" "$HOME/.claude/skills/shape-idea"
-
-# Codex repo-bootstrap
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/repo-bootstrap/codex-init-gate" "${CODEX_HOME:-$HOME/.codex}/skills/codex-init-gate"
-
-# Claude Code repo-bootstrap
-mkdir -p "$HOME/.claude/skills"
-ln -sfn "$PWD/skills/repo-bootstrap/claude-init-gate" "$HOME/.claude/skills/claude-init-gate"
-
-# Codex handoff
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/handoff/codex-handoff" "${CODEX_HOME:-$HOME/.codex}/skills/codex-handoff"
-
-# Claude Code handoff
-mkdir -p "$HOME/.claude/skills"
-ln -sfn "$PWD/skills/handoff/claude-handoff" "$HOME/.claude/skills/claude-handoff"
-
-# Codex subagents
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/subagents/design-repo-subagents" "${CODEX_HOME:-$HOME/.codex}/skills/design-repo-subagents"
-
-# Codex repo-instructions
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/repo-instructions/write-agents-md" "${CODEX_HOME:-$HOME/.codex}/skills/write-agents-md"
-
-# Codex repo-orientation
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/skills/repo-orientation/orient-repo" "${CODEX_HOME:-$HOME/.codex}/skills/orient-repo"
-
-# Claude Code repo-orientation
-mkdir -p "$HOME/.claude/skills"
-ln -sfn "$PWD/skills/repo-orientation/orient-repo" "$HOME/.claude/skills/orient-repo"
-```
-
-## Generic Rule For Future Packages
-
-If a future package is added under `skills/<family>/<skill-name>/`:
-
-1. Confirm it contains `SKILL.md` and passes `make all` or the documented package-specific validation.
-2. Copy the whole `<skill-name>/` directory into the target agent's skill home under the same name, backing up any same-name destination first.
-3. Do not infer cross-agent compatibility from folder proximity; install only variants whose `SKILL.md` and docs identify the target agent.
+Do not infer cross-agent compatibility from folder proximity. Only catalog targets and the package's own contract establish support.
 
 ## After Installing
 
-Tell the user to restart the target agent or open a fresh session so skill metadata is discovered.
-
-Suggested final message:
+Restart the target agent or open a fresh session so skill metadata is rediscovered. During trials, invoke the exact package name, for example:
 
 ```text
-Installed the requested skill package(s). Restart Codex/Claude Code or start a fresh session to pick up the new skill. During trials, explicitly request the package name such as `distill-ramble`, `shape-idea`, `codex-init-gate`, `claude-init-gate`, `codex-handoff`, or `claude-handoff`.
+use distill-ramble
+use shape-idea
+use codex-init-gate
+use claude-init-gate
+use codex-handoff
+use claude-handoff
+use design-repo-subagents
+use write-agents-md
+use orient-repo
 ```
 
-## Routing Caveat
-
-If similarly named default skills are also installed, routing is resolver-defined. For deterministic routing, the user must explicitly request this skill by name or intentionally replace/rename the default after validation.
+If similarly named built-in or legacy skills remain, routing is resolver-defined. Run `doctor`, remove or relocate duplicate discoverable copies only with explicit approval, then restart the agent.

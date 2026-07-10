@@ -23,12 +23,13 @@ The gate can strongly support question 3 and partially support questions 1 and 2
 
 ## Debuggability Principles
 
-- Keep one canonical reproduction path: `make check` or an explicitly chosen equivalent, plus clear individual targets for narrower failures.
+- Keep one canonical reproduction path: `make check` or an explicitly chosen equivalent on the repo's selected runner, plus clear individual targets for narrower failures. Do not add a Makefile when another runner owns the contract unless the user approves a thin wrapper.
 - Treat build/test/check commands as code execution. Review command bodies and ask before first execution in an untrusted repo.
 - Prefer deterministic tests, fixtures, and seeds over timing/network/order-dependent tests.
 - Make errors actionable: include the failing input/operation and the next likely debug step without leaking secrets.
 - Redact or summarize sensitive-looking command output before reporting exact errors.
 - Report generated/vendor/cache directories so agents do not edit them by mistake; defer durable repo docs to `write-agents-md` unless the user asks.
+- Verify check-only behavior with tracked-state evidence before/after execution. Approved ignored caches/build outputs may appear; tracked source/config/lockfiles must not change, and frozen/locked plus offline/no-network modes are preferred where supported.
 
 ## Potentially Enforceable vs Advisory
 
@@ -49,9 +50,11 @@ Keep as advisory unless the repo has reliable tooling:
 - fixture design
 - hidden global state
 
-## Fresh Repos
+Advisory findings live in the bootstrap report by default. Do not imply they are enforced or persisted. If the user wants durable guidance, ask for a named destination or hand it off separately to `write-agents-md`; runner config should contain only rules it actually enforces.
 
-For a fresh repo with a detectable or user-selected stack, propose a minimal structure that makes edit boundaries obvious, for example a core/domain area, an adapter/IO area, and tests. If no stack/runner is detectable, ask first; do not present fail-closed placeholders as a completed LLM-debuggable setup. Do not create directories, source files, test skeletons, README/license text, or business architecture unless the user explicitly requests scaffolding beyond the gate.
+## Empty And Fresh Repos
+
+When `repo_state` is `empty-repo`, no stack/runner is detectable: ask first and do not present fail-closed placeholders as a completed LLM-debuggable setup. When `repo_state` is `fresh-repo`, a detectable or user-selected stack exists; propose a minimal structure that makes edit boundaries obvious, for example a core/domain area, an adapter/IO area, and tests. In either state, do not create directories, source files, test skeletons, README/license text, or business architecture unless the user explicitly requests scaffolding beyond the gate.
 
 ## Existing Repos
 

@@ -11,6 +11,8 @@ Use two coarse approvals instead of many tiny prompts:
 
 Ask again if command-defining files change after approval.
 
+If the plan includes Claude Code, Codex, or other agent-specific hooks/settings, first confirm the current mechanism and exact keys/events from current documentation available in the runtime or user-provided config. Do this before asking for write-plan approval and before any related file write; never invent hook event names.
+
 ## Approval Boundaries
 
 Ask for explicit approval before:
@@ -42,7 +44,7 @@ No-write does not mean no-execute. If a command may execute untrusted repo code,
 Before editing, show:
 
 1. Detected stack and package manager.
-2. Selected mode: `fresh-repo`, `existing-repo`, `add-stack`, or `verify-only`.
+2. Independent classification: `repo_state` is `empty-repo`, `fresh-repo`, or `existing-repo`; `operation` is `scaffold`, `add-stack`, or `verify-only`.
 3. Canonical runner choice: `make` wrapper, existing runner, or another approved equivalent.
 4. Files to create or modify.
 5. Tool install commands with pinned versions or lockfile strategy, if any.
@@ -50,6 +52,8 @@ Before editing, show:
 7. Enforceable versus advisory LLM-debuggable code rules.
 8. Hook and CI strategy.
 9. Backup and rollback approach.
+
+For `empty-repo + scaffold`, stop for language/runner selection unless the user explicitly accepts an incomplete fail-closed placeholder. A `verify-only` operation forbids edits but does not waive execution review.
 
 ## Backups, Clean Trees, And Diffs
 
@@ -71,13 +75,19 @@ Detect existing CI first. If no CI exists, propose a provider and wait for appro
 
 Do not propose floating latest installs for deterministic gates. Prefer existing lockfiles, package-manager dev dependencies with version constraints, committed tool config, and reproducible setup commands. If exact pins are impossible, report the nondeterminism.
 
+For the canonical check, prefer frozen/locked dependency resolution and offline/no-network flags where supported. Do not let a check refresh a lockfile. If a first run must download missing dependencies, classify that separately as an approved install/network action rather than hiding it inside check verification.
+
+## Check-Only Evidence
+
+Before and after approved check execution, compare tracked source, tests, config, committed generated output, and lockfiles using status/diff plus relevant hashes when practical. Check-only allows only expected, approved ignored caches/build outputs; list those outputs in the plan and final report. If any tracked file changes, the gate violates the contract even when its exit status is zero. Run twice when practical to catch nondeterministic rewrites.
+
 ## Output Redaction
 
 Do not paste raw command output by default. Summarize failures first, then include only the minimal redacted lines needed to debug. Do not paste unredacted secrets, tokens, private account identifiers, multiline credentials, base64-looking secrets, private URLs, or sensitive logs from failed checks. Use `redact-sensitive-info` if available; otherwise summarize or mask sensitive-looking values before reporting exact errors.
 
 ## Verification Reporting
 
-Use a compact, structured final report: mode/runner; files changed and backups; commands reviewed/run; gate result; idempotency or check-only evidence; enforceable-now versus advisory rules; future-LLM reproduction path and edit boundary; deferred approvals or risks. If check execution was not approved, say so instead of implying verification.
+Use a compact, structured final report: `repo_state` / `operation` / runner; files changed and backups; commands reviewed/run; gate result; before/after and idempotency evidence; approved ignored outputs; enforceable-now versus advisory rules; future-LLM reproduction path and edit boundary; deferred approvals or risks. Advisory rules stay in the report unless the user approves a named durable destination or a separate handoff to `write-agents-md`; do not imply they were persisted. If check execution was not approved, say so instead of implying verification.
 
 ## Existing Config Is Untrusted
 

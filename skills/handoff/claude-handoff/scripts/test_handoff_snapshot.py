@@ -31,6 +31,7 @@ def test_non_git() -> None:
         (root / "note.txt").write_text("hello\n", encoding="utf-8")
         out = run_probe(root)
         check("- Git repo: no" in out, "non-git root should be reported")
+        check(str(root) not in out, "absolute root should be hashed")
         check("### Recent Files" in out, "recent files block missing")
         check("note.txt" in out, "ordinary filename should be shown")
         check("Raw file contents" in out, "safety note missing")
@@ -61,6 +62,17 @@ def test_git_and_sensitive_paths() -> None:
         check(".ssh/mykey" not in out, "sensitive ssh path leaked")
         check("[SENSITIVE-PATH:" in out, "sensitive path should be redacted")
         check("not printed" not in out, "file contents leaked")
+        check(str(root) not in out, "git root should be hashed")
+
+        marker = root / "external-diff-ran"
+        helper = root / "external-diff.sh"
+        helper.write_text(f"#!/bin/sh\ntouch '{marker}'\nexit 0\n", encoding="utf-8")
+        helper.chmod(0o755)
+        run(["git", "config", "diff.external", str(helper)], root)
+        env = os.environ.copy()
+        env["GIT_EXTERNAL_DIFF"] = str(helper)
+        run_probe(root, env=env)
+        check(not marker.exists(), "configured/inherited external diff must never execute")
 
 
 def test_git_status_failure_is_unknown() -> None:
@@ -71,20 +83,27 @@ def test_git_status_failure_is_unknown() -> None:
         fakegit = fakebin / "git"
         fakegit.write_text(
             "#!/bin/sh\n"
-            "if [ \"$1 $2\" = 'rev-parse --show-toplevel' ]; then pwd; exit 0; fi\n"
-            "if [ \"$1 $2\" = 'branch --show-current' ]; then echo main; exit 0; fi\n"
-            "if [ \"$1 $2 $3\" = 'rev-parse --short HEAD' ]; then echo deadbee; exit 0; fi\n"
-            "if [ \"$1 $2\" = 'status --short' ]; then echo fail >&2; exit 2; fi\n"
+            "echo \"$*|locks=$GIT_OPTIONAL_LOCKS|pager=$GIT_PAGER|prompt=$GIT_TERMINAL_PROMPT\" >> \"$PROBE_LOG\"\n"
+            "case \" $* \" in *' rev-parse --show-toplevel '*) pwd; exit 0;; esac\n"
+            "case \" $* \" in *' branch --show-current '*) echo feature/token-supersecret; exit 0;; esac\n"
+            "case \" $* \" in *' rev-parse --short HEAD '*) echo deadbee; exit 0;; esac\n"
+            "case \" $* \" in *' status --short '*) echo fail >&2; exit 2;; esac\n"
             "exit 2\n",
             encoding="utf-8",
         )
         fakegit.chmod(0o755)
         env = os.environ.copy()
         env["PATH"] = f"{fakebin}:{env.get('PATH', '')}"
+        log = root / "git.log"
+        env["PROBE_LOG"] = str(log)
         out = run_probe(root, env=env)
         check("- Git repo: yes" in out, "fake git root should be accepted")
         check("- Git dirty: unknown" in out, "failed git status must not be reported clean")
         check("git status --short failed" in out, "status failure warning missing")
+        check("token-supersecret" not in out and "SENSITIVE-BRANCH" in out, "sensitive branch must be redacted")
+        logged = log.read_text(encoding="utf-8")
+        check("core.fsmonitor=false" in logged, "fsmonitor override missing")
+        check("locks=0|pager=cat|prompt=0" in logged, "safe git environment missing")
 
 
 def test_non_git_caps() -> None:
@@ -96,11 +115,37 @@ def test_non_git_caps() -> None:
         check("non-git scan stopped after 2 files" in out, "non-git max-files cap not reported")
 
 
+def test_git_output_is_bounded_during_execution() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        fakebin = root / "bin"
+        fakebin.mkdir()
+        fakegit = fakebin / "git"
+        fakegit.write_text(
+            "#!/usr/bin/env python3\n"
+            "import os, sys\n"
+            "args = ' ' + ' '.join(sys.argv[1:]) + ' '\n"
+            "if ' rev-parse --show-toplevel ' in args: print(os.getcwd()); raise SystemExit\n"
+            "if ' branch --show-current ' in args: print('main'); raise SystemExit\n"
+            "if ' rev-parse --short HEAD ' in args: print('deadbee'); raise SystemExit\n"
+            "if ' status --short ' in args: print('x' * 2_000_000); raise SystemExit\n"
+            "raise SystemExit(0)\n",
+            encoding="utf-8",
+        )
+        fakegit.chmod(0o755)
+        env = os.environ.copy()
+        env["PATH"] = f"{fakebin}:{env.get('PATH', '')}"
+        out = run_probe(root, "--max-bytes", "128", "--limit", "5", env=env)
+        check(len(out) < 20_000, "probe retained unbounded git output")
+        check("execution capture cap" in out, "execution-time truncation should be explicit")
+
+
 def main() -> int:
     test_non_git()
     test_git_and_sensitive_paths()
     test_git_status_failure_is_unknown()
     test_non_git_caps()
+    test_git_output_is_bounded_during_execution()
     print("handoff_snapshot.py smoke tests passed")
     return 0
 

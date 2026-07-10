@@ -22,4 +22,6 @@ This package intentionally uses the same name as the existing local Codex skill 
 
 Read [`USAGE.md`](USAGE.md) for review, draft, and update examples.
 
-`write-agents-md` can also add concise references to accepted/current Design Briefs or decision docs without embedding their full reasoning.
+`write-agents-md` can also add concise references to accepted/current Design Briefs or decision docs without embedding their full reasoning. Consequential brief changes remain owned by Shape Idea.
+
+File edits are guarded: targets must remain inside the physical repo root with no symlink traversal, and existing instruction files require an exact-diff approval plus a verified timestamped backup before overwrite, deletion, or consolidation.

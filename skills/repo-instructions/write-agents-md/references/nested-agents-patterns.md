@@ -37,3 +37,5 @@ These instructions apply to `[directory]/`.
 ```
 
 Do not duplicate global safety rules unless repetition prevents likely mistakes.
+
+Before creating or changing a nested file, validate the physical repo root, the nested target's containment, and every existing path component without following symlinks. A nested directory boundary is not permission to escape the repo through a symlink.

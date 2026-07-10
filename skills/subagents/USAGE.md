@@ -34,7 +34,7 @@ Expected behavior:
 3. Continue non-overlapping local work while agents run.
 4. Wait only when their result is needed.
 5. Review subagent output before using it.
-6. Close agents that are no longer useful.
+6. Use only lifecycle controls the active runtime exposes; interrupt obsolete work when appropriate, without assuming interruption rolls back shared files or closes an agent.
 
 ## Worker Split Example
 
@@ -52,7 +52,19 @@ use design-repo-subagents
 
 ## Good Prompt Hints
 
-- Say whether you want planning only or actual spawning. Role nouns alone default to planning.
+- Say explicitly when you want planning only or forbid spawning; that boundary applies even in proactive-delegation runtimes.
 - Mention known target files or modules if you already know them.
 - Ask for a critical/비판 agent when you want independent review, not implementation.
 - For worker agents, require disjoint file ownership.
+
+## Runtime-Aware Operation
+
+Before actual delegation, the skill checks the active runtime rather than assuming one Codex API:
+
+- whether delegation is proactive or requires explicit authorization
+- whether child agents receive all, some, or none of the conversation context
+- whether agents share the current filesystem or work in isolated workspaces
+- how many concurrency slots are available
+- which messaging, status, wait, interrupt/cancel, resume, or close capabilities actually exist
+
+On a shared filesystem, prompts must say that other agents may edit concurrently and assign disjoint paths. In an isolated runtime, the integration path must be stated. Tool names in examples are illustrative only.

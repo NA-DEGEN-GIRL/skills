@@ -1,75 +1,51 @@
 #!/usr/bin/env python3
-"""Validate a handoff snapshot before loading it into an LLM context."""
+"""Validate one in-lane handoff snapshot before loading it into context."""
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 
-MAX_DEFAULT_BYTES = 1024 * 1024
-REQUIRED_HEADING = "# Handoff Snapshot"
-METADATA_RE = re.compile(r"^-\s*([^:]+):\s*(.*)$")
-
-
-def parse_metadata(text: str) -> dict[str, str]:
-    lines = text.splitlines()
-    metadata: dict[str, str] = {}
-    in_metadata = False
-    for line in lines:
-        if line.strip() == "## Metadata":
-            in_metadata = True
-            continue
-        if in_metadata and line.startswith("## "):
-            break
-        if in_metadata:
-            match = METADATA_RE.match(line.strip())
-            if match:
-                metadata[match.group(1).strip()] = match.group(2).strip() or "Unknown"
-    return metadata
-
-
-def validate(path: Path, max_bytes: int) -> tuple[bool, list[str]]:
-    messages: list[str] = []
-    try:
-        data = path.read_bytes()
-    except FileNotFoundError:
-        return False, ["snapshot file not found"]
-    if max_bytes > 0 and len(data) > max_bytes:
-        return False, [f"snapshot exceeds max bytes ({len(data)} > {max_bytes})"]
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        return False, ["snapshot is not valid UTF-8"]
-    if "\x00" in text:
-        return False, ["snapshot contains NUL bytes"]
-    first_nonempty = next((line.strip() for line in text.splitlines() if line.strip()), "")
-    if first_nonempty != REQUIRED_HEADING:
-        return False, [f"first heading is not `{REQUIRED_HEADING}`"]
-    metadata = parse_metadata(text)
-    schema = metadata.get("Schema Version", "Unknown")
-    agent = metadata.get("Agent", "Unknown")
-    skill_variant = metadata.get("Skill Variant", "Unknown")
-    messages.append(f"Schema Version: {schema}")
-    messages.append(f"Agent: {agent}")
-    messages.append(f"Skill Variant: {skill_variant}")
-    if not metadata:
-        messages.append("Metadata: missing or unparseable; treat missing fields as Unknown")
-    return True, messages
+from snapshot_common import (
+    MAX_DEFAULT_BYTES,
+    SnapshotError,
+    lane_for,
+    path_display,
+    resolve_handoff,
+    sanitize_display,
+    validate_snapshot_path,
+)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Sanity-check a handoff snapshot before reading it into context.")
-    parser.add_argument("path", help="Snapshot path, usually .handoff/latest.md")
-    parser.add_argument("--max-bytes", type=int, default=MAX_DEFAULT_BYTES, help="Maximum snapshot size to load")
+    parser = argparse.ArgumentParser(description="Safely validate an in-lane handoff snapshot.")
+    parser.add_argument("path", help="Snapshot path in the selected lane")
+    parser.add_argument("--root", default=".", help="Repo root or working directory")
+    parser.add_argument("--dir", default=".handoff", help="Handoff directory under root")
+    parser.add_argument("--scope", help="Selected scoped lane; omit for the default lane")
+    parser.add_argument("--max-bytes", type=int, default=MAX_DEFAULT_BYTES, help="Positive maximum snapshot size")
     args = parser.parse_args()
 
-    ok, messages = validate(Path(args.path), args.max_bytes)
-    prefix = "OK" if ok else "INVALID"
-    print(f"{prefix}: {args.path}")
-    for message in messages:
-        print(f"- {message}")
-    return 0 if ok else 1
+    try:
+        root, handoff = resolve_handoff(Path(args.root).expanduser(), Path(args.dir).expanduser())
+        lane = lane_for(handoff, args.scope)
+        path_arg = Path(args.path).expanduser()
+        selected_path = path_arg if path_arg.is_absolute() else root / path_arg
+        snapshot = validate_snapshot_path(selected_path, lane, args.max_bytes)
+    except SnapshotError as exc:
+        print(f"INVALID: {sanitize_display(args.path, 240)}")
+        print(f"- {sanitize_display(str(exc), 300)}")
+        return 1
+
+    print(f"OK: {path_display(snapshot.path or Path(args.path), root)}")
+    for key in ("Schema Version", "Agent", "Skill Variant", "Scope"):
+        if key == "Scope" and lane.scope is None:
+            continue
+        print(f"- {key}: {sanitize_display(snapshot.metadata.get(key, 'Unknown'))}")
+    if not snapshot.metadata:
+        print("- Metadata: missing or unparseable; treat missing fields as Unknown")
+    print(f"- SHA-256: {snapshot.sha256}")
+    return 0
 
 
 if __name__ == "__main__":

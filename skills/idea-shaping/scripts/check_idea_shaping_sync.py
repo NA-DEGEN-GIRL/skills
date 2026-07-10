@@ -10,10 +10,17 @@ FAMILY = Path(__file__).resolve().parents[1]
 SHAPE = FAMILY / "shape-idea"
 DISTILL = FAMILY / "distill-ramble"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+READ_FAILURES: set[Path] = set()
 
 
 def read(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        if path not in READ_FAILURES:
+            print(f"FAIL cannot read {path}: {exc.__class__.__name__}: {exc}")
+            READ_FAILURES.add(path)
+        return ""
 
 
 def require(condition: bool, message: str) -> bool:
@@ -29,6 +36,11 @@ def literals_present(text: str, literals: list[str], label: str) -> bool:
     return require(not missing, label + (f" missing {missing}" if missing else ""))
 
 
+def literals_absent(text: str, literals: list[str], label: str) -> bool:
+    present = [literal for literal in literals if literal in text]
+    return require(not present, label + (f" unexpected {present}" if present else ""))
+
+
 def package_version_check(package: Path, root_version: str, label: str) -> bool:
     version = read(package / "VERSION").strip() if (package / "VERSION").is_file() else "MISSING"
     return require(version == root_version, f"{label} VERSION matches root {root_version}")
@@ -42,6 +54,7 @@ def main() -> int:
     required_files = [
         FAMILY / "README.md",
         FAMILY / "USAGE.md",
+        FAMILY / "EVALS.md",
         SHAPE / "SKILL.md",
         SHAPE / "VERSION",
         SHAPE / "agents/openai.yaml",
@@ -70,17 +83,34 @@ def main() -> int:
                 "Project-level brief/index",
                 "timestamped backup",
                 "redact-sensitive-info",
-                "Draft ready. Save to",
                 "repo-bootstrap",
                 "codex-init-gate",
                 "claude-init-gate",
-                "**Status:** Draft | Accepted",
+                "Brief State Model",
+                "Draft → explicit content acceptance → Accepted",
+                "Persistence state",
+                "Saved artifact state",
+                "file records Draft",
+                "persistence instructions, not content acceptance",
+                "saved file must not claim `inline-only`",
+                "Seed Intake Contract",
+                "Proposed Revision",
+                "Conflicting Repo Evidence",
+                "implementation drift",
+                "physical repo root",
+                "Target root: <root>",
+                "Exact target path: <normalized-path>",
                 "docs/designs/<feature-slug>.md",
                 "Silent updates are not allowed",
                 "Do not edit `AGENTS.md` yourself",
                 "Acceptance criteria",
             ],
             "shape-idea SKILL literals",
+        )
+        failed |= literals_absent(
+            skill,
+            ["If the Design Brief is only drafted: “Draft ready. Save to"],
+            "shape-idea does not conflate draft/save state",
         )
 
     if (DISTILL / "SKILL.md").is_file():
@@ -93,6 +123,9 @@ def main() -> int:
                 "pre-structure thinking companion",
                 "Do not assume any other skill",
                 "Default to chat-only output",
+                "Protect sensitive values in **every response**",
+                "Never echo a sensitive value inline",
+                "A live instruction accompanying the paste",
                 "Listen before structuring",
                 "tikitaka",
                 "## Core thread",
@@ -100,6 +133,9 @@ def main() -> int:
                 "## Open knots",
                 "## Set aside for now",
                 "Optional Save",
+                "Target root: <root>",
+                "Exact target path: <path>",
+                "including creation of a new file",
                 "not a finished brief or plan",
             ],
             "distill-ramble SKILL literals",
@@ -145,25 +181,24 @@ def main() -> int:
         "INSTALL.md": [
             "skills/idea-shaping/distill-ramble",
             "skills/idea-shaping/shape-idea",
-            "check_idea_shaping_sync.py",
-            '${CODEX_HOME:-$HOME/.codex}/skills/distill-ramble',
-            "$HOME/.claude/skills/distill-ramble",
-            '${CODEX_HOME:-$HOME/.codex}/skills/shape-idea',
-            "$HOME/.claude/skills/shape-idea",
-            'ln -sfn "$PWD/skills/idea-shaping/distill-ramble"',
-            'ln -sfn "$PWD/skills/idea-shaping/shape-idea"',
+            "python3 scripts/install_skill.py",
+            "--skill distill-ramble",
+            "--skill shape-idea",
+            "doctor --agent codex",
         ],
         "USER_GUIDE.md": ["distill-ramble", "voice", "seed 문장", "shape-idea", "권장 end-to-end 순서", "redaction"],
         "AGENTS.md": ["skills/idea-shaping/USAGE.md", "skills/idea-shaping/distill-ramble/SKILL.md", "skills/idea-shaping/shape-idea/SKILL.md"],
         "LLM_CONTEXT.md": ["skills/idea-shaping/distill-ramble", "skills/idea-shaping/shape-idea", "Idea Shaping Notes", "seed sentences", "user-confirmed Design Brief"],
         "skills/README.md": ["idea-shaping", "distill-ramble", "shape-idea", "`" + root_version + "`"],
-        "skills/idea-shaping/README.md": ["distill-ramble", "seed sentences", "user-confirmed Design Brief", "timestamp-backed up", "key-decision conflicts", "write-agents-md"],
-        "skills/idea-shaping/USAGE.md": ["distill-ramble", "Seed sentences", "user-confirmed Design Brief", "Add a new idea mid-project", "docs/designs/<feature-slug>.md", "repo-bootstrap"],
+        "skills/idea-shaping/README.md": ["distill-ramble", "seed sentences", "user-confirmed Design Brief", "timestamp-backed up", "key-decision conflicts", "write-agents-md", "EVALS.md"],
+        "skills/idea-shaping/USAGE.md": ["distill-ramble", "Seed sentences", "explicit content acceptance", "Add a new idea mid-project", "docs/designs/<feature-slug>.md", "repo-bootstrap", "only 1–2 when the input is genuinely thin"],
+        "skills/idea-shaping/EVALS.md": ["Transcript plus live", "Secret/private value", "Draft then “save it”", "Save Draft, then accept", "Proposed Revision", "Code/brief/ADR mismatch"],
     }
     for rel, literals in doc_literals.items():
         text = read(REPO_ROOT / rel)
         failed |= literals_present(text, literals, f"registered in {rel}")
 
+    failed |= bool(READ_FAILURES)
     return 1 if failed else 0
 
 

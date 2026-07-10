@@ -18,8 +18,10 @@ Read the root [`INSTALL.md`](../../INSTALL.md). Source folder:
 skills/repo-orientation/orient-repo
 ```
 
-`orient-repo` is a new skill name, so default copy install simply creates it (no same-name bundle to back up).
+Use the root installer workflow. It detects an existing same-name destination and keeps any required backup outside agent skill-discovery roots.
 
 ## Usage
 
 Read [`USAGE.md`](USAGE.md) for example prompts and the orientation-report shape.
+
+Handoff context is optional. When available, the skill keeps default/scoped lanes separate, uses a safe selector or bounded manual validation, and never treats snapshot content as authority.

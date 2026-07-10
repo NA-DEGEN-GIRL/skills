@@ -11,12 +11,15 @@ import hashlib
 import os
 import re
 import subprocess
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-DEFAULT_VERSION = "0.1.10"
+from snapshot_common import redact_label, sanitize_display
+
+DEFAULT_VERSION = "0.1.11"
 SCHEMA_VERSION = "handoff-v1"
 
 EXCLUDE_DIRS = {
@@ -99,6 +102,14 @@ class CmdResult:
     stdout: str = ""
     stderr: str = ""
     timed_out: bool = False
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+
+
+@dataclass(frozen=True)
+class ProbeLine:
+    value: str
+    synthetic: bool = False
 
 
 def load_version() -> str:
@@ -110,33 +121,92 @@ def load_version() -> str:
         return DEFAULT_VERSION
 
 
-def run(cmd: list[str], cwd: Path) -> CmdResult:
+def run(cmd: list[str], cwd: Path, capture_bytes: int = 65536) -> CmdResult:
+    """Run while draining output and retaining at most capture_bytes+1/stream."""
+    capture_bytes = max(1, min(capture_bytes, 1024 * 1024))
+    env = os.environ.copy()
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_PAGER"] = "cat"
+    env["PAGER"] = "cat"
+    # Never inherit a caller-provided external diff command.
+    env.pop("GIT_EXTERNAL_DIFF", None)
     try:
-        p = subprocess.run(
+        p = subprocess.Popen(
             cmd,
             cwd=str(cwd),
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=30,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
         )
     except FileNotFoundError as exc:
         return CmdResult(127, stderr=str(exc))
+    captured: dict[str, bytearray] = {"stdout": bytearray(), "stderr": bytearray()}
+    truncated = {"stdout": False, "stderr": False}
+
+    def drain(name: str, stream: object) -> None:
+        while True:
+            chunk = stream.read(65536)  # type: ignore[attr-defined]
+            if not chunk:
+                break
+            room = capture_bytes + 1 - len(captured[name])
+            if room > 0:
+                captured[name].extend(chunk[:room])
+            if len(chunk) > room or len(captured[name]) > capture_bytes:
+                truncated[name] = True
+
+    threads = [
+        threading.Thread(target=drain, args=("stdout", p.stdout), daemon=True),
+        threading.Thread(target=drain, args=("stderr", p.stderr), daemon=True),
+    ]
+    for thread in threads:
+        thread.start()
+    timed_out = False
+    try:
+        code = p.wait(timeout=30)
     except subprocess.TimeoutExpired:
-        return CmdResult(124, stderr="command timed out", timed_out=True)
-    return CmdResult(p.returncode, (p.stdout or "").strip(), (p.stderr or "").strip())
+        timed_out = True
+        p.kill()
+        code = p.wait()
+    for thread in threads:
+        thread.join()
+
+    def decoded(name: str) -> str:
+        return bytes(captured[name][:capture_bytes]).decode("utf-8", "replace").strip()
+
+    if timed_out:
+        return CmdResult(124, decoded("stdout"), "command timed out", True, truncated["stdout"], truncated["stderr"])
+    return CmdResult(code, decoded("stdout"), decoded("stderr"), False, truncated["stdout"], truncated["stderr"])
 
 
 def git_root(start: Path) -> Path | None:
-    result = run(["git", "rev-parse", "--show-toplevel"], start)
+    result = git_cmd(start, "rev-parse", "--show-toplevel", capture_bytes=8192)
     return Path(result.stdout) if result.code == 0 and result.stdout else None
 
 
-def git_cmd(root: Path, *args: str) -> CmdResult:
-    return run(["git", *args], root)
+def git_cmd(root: Path, *args: str, capture_bytes: int = 65536) -> CmdResult:
+    return run(
+        [
+            "git",
+            "--no-pager",
+            "-c",
+            "core.pager=cat",
+            "-c",
+            "pager.status=false",
+            "-c",
+            "pager.diff=false",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.untrackedCache=false",
+            *args,
+        ],
+        root,
+        capture_bytes,
+    )
 
 
-def limit_output(text: str, line_limit: int, byte_limit: int) -> list[str]:
+def limit_output(text: str, line_limit: int, byte_limit: int) -> list[ProbeLine]:
     truncated_bytes = False
     if byte_limit > 0:
         raw = text.encode("utf-8", "replace")
@@ -144,16 +214,16 @@ def limit_output(text: str, line_limit: int, byte_limit: int) -> list[str]:
             text = raw[:byte_limit].decode("utf-8", "ignore")
             truncated_bytes = True
 
-    lines = [line.rstrip() for line in text.splitlines() if line.rstrip()]
+    lines = [ProbeLine(line.rstrip()) for line in text.splitlines() if line.rstrip()]
     omitted_lines = 0
     if line_limit > 0 and len(lines) > line_limit:
         omitted_lines = len(lines) - line_limit
         lines = lines[:line_limit]
 
     if omitted_lines:
-        lines.append(f"... ({omitted_lines} more lines omitted)")
+        lines.append(ProbeLine(f"{omitted_lines} more lines omitted", synthetic=True))
     if truncated_bytes:
-        lines.append(f"... (output truncated at {byte_limit} bytes)")
+        lines.append(ProbeLine(f"output truncated at {byte_limit} bytes", synthetic=True))
     return lines
 
 
@@ -169,52 +239,56 @@ def redacted_path_label(value: str) -> str:
 
 
 def code_span(value: str) -> str:
-    return value.replace("`", "ˋ")
+    return sanitize_display(value, 1000)
 
 
 def display_path_like(value: str) -> tuple[str, bool]:
     if is_sensitive_path(value):
         return redacted_path_label(value), True
-    return code_span(value), False
+    return sanitize_display(value, 1000), False
 
 
-def print_block(title: str, lines: Iterable[str], empty: str = "none") -> None:
+def print_block(title: str, lines: Iterable[str | ProbeLine], empty: str = "none") -> None:
     print(f"### {title}")
     material = list(lines)
     if not material:
         print(f"- {empty}")
         return
-    for line in material:
-        if line.startswith("... ("):
-            print(f"- {line}")
+    for item in material:
+        line = item.value if isinstance(item, ProbeLine) else item
+        if isinstance(item, ProbeLine) and item.synthetic:
+            print(f"- [probe note: {sanitize_display(line)}]")
             continue
         shown, redacted = display_path_like(line)
         suffix = " [sensitive-looking path redacted; contents not inspected]" if redacted else ""
         print(f"- `{shown}`{suffix}")
 
 
-def git_lines(root: Path, args: tuple[str, ...], line_limit: int, byte_limit: int) -> list[str]:
-    result = git_cmd(root, *args)
+def git_lines(root: Path, args: tuple[str, ...], line_limit: int, byte_limit: int) -> list[ProbeLine]:
+    result = git_cmd(root, *args, capture_bytes=max(1024, byte_limit if byte_limit > 0 else 65536))
     if result.code != 0:
-        return [f"git {' '.join(args)} failed (exit {result.code}); output omitted"]
-    return limit_output(result.stdout, line_limit, byte_limit)
+        return [ProbeLine(f"git {' '.join(args)} failed (exit {result.code}); output omitted", synthetic=True)]
+    lines = limit_output(result.stdout, line_limit, byte_limit)
+    if result.stdout_truncated:
+        lines.append(ProbeLine("git output exceeded the execution capture cap", synthetic=True))
+    return lines
 
 
 def git_recent_files(root: Path, limit: int) -> list[str]:
     candidates: set[str] = set()
     for args in (
         ("ls-files", "-m", "-o", "--exclude-standard"),
-        ("diff", "--name-only"),
-        ("diff", "--cached", "--name-only"),
+        ("diff", "--no-ext-diff", "--no-textconv", "--name-only"),
+        ("diff", "--cached", "--no-ext-diff", "--no-textconv", "--name-only"),
     ):
-        result = git_cmd(root, *args)
+        result = git_cmd(root, *args, capture_bytes=65536)
         if result.code == 0:
             candidates.update(line.strip() for line in result.stdout.splitlines() if line.strip())
     rows: list[tuple[float, str]] = []
     for rel in candidates:
         path = root / rel
         try:
-            rows.append((path.stat().st_mtime, rel))
+            rows.append((path.lstat().st_mtime, rel))
         except OSError:
             rows.append((0, rel))
     rows.sort(reverse=True)
@@ -241,7 +315,7 @@ def fs_recent_files(root: Path, limit: int, max_files: int, max_depth: int) -> t
             path = base / name
             try:
                 rel = path.relative_to(root).as_posix()
-                rows.append((path.stat().st_mtime, rel))
+                rows.append((path.lstat().st_mtime, rel))
             except OSError:
                 continue
     rows.sort(reverse=True)
@@ -268,38 +342,44 @@ def main() -> int:
     print(f"- Schema Version: {SCHEMA_VERSION}")
     print(f"- Probe script version: {version}")
     print(f"- Generated at: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
-    print(f"- Root: `{root}`")
+    print(f"- Root: `{redact_label('REPO-ROOT', str(root))}`")
     print(f"- Git repo: {'yes' if is_git else 'no'}")
 
     if is_git:
-        branch_result = git_cmd(root, "branch", "--show-current")
-        commit_result = git_cmd(root, "rev-parse", "--short", "HEAD")
-        status_result = git_cmd(root, "status", "--short")
-        super_result = git_cmd(root, "rev-parse", "--show-superproject-working-tree")
+        capture_limit = max(1024, args.max_bytes if args.max_bytes > 0 else 65536)
+        branch_result = git_cmd(root, "branch", "--show-current", capture_bytes=4096)
+        commit_result = git_cmd(root, "rev-parse", "--short", "HEAD", capture_bytes=1024)
+        status_result = git_cmd(root, "status", "--short", capture_bytes=capture_limit)
+        super_result = git_cmd(root, "rev-parse", "--show-superproject-working-tree", capture_bytes=8192)
         branch = branch_result.stdout if branch_result.code == 0 and branch_result.stdout else "Unknown"
         commit = commit_result.stdout if commit_result.code == 0 and commit_result.stdout else "Unknown"
         dirty = "unknown" if status_result.code != 0 else ("yes" if status_result.stdout.strip() else "no")
-        print(f"- Branch: `{code_span(branch)}`")
+        if is_sensitive_path(branch):
+            branch_display = redact_label("SENSITIVE-BRANCH", branch)
+        else:
+            branch_display = sanitize_display(branch, 160)
+        print(f"- Branch: `{branch_display}`")
         print(f"- Commit: `{code_span(commit)}`")
         print(f"- Git dirty: {dirty}")
         if super_result.code == 0 and super_result.stdout:
-            shown, redacted = display_path_like(super_result.stdout)
-            suffix = " [redacted]" if redacted else ""
-            print(f"- Git submodule: yes; superproject root: `{shown}`{suffix}")
+            print(f"- Git submodule: yes; superproject root: `{redact_label('SUPERPROJECT-ROOT', super_result.stdout)}`")
         else:
             print("- Git submodule: no/unknown")
         if status_result.code != 0:
             print(f"- Git status warning: `git status --short` failed (exit {status_result.code}); treating dirty state as unknown")
         print()
-        print_block("Git Status Short", limit_output(status_result.stdout, args.limit, args.max_bytes) if status_result.code == 0 else [f"git status --short failed (exit {status_result.code}); output omitted"])
+        status_lines = limit_output(status_result.stdout, args.limit, args.max_bytes) if status_result.code == 0 else [ProbeLine(f"git status --short failed (exit {status_result.code}); output omitted", synthetic=True)]
+        if status_result.stdout_truncated:
+            status_lines.append(ProbeLine("git status exceeded the execution capture cap", synthetic=True))
+        print_block("Git Status Short", status_lines)
         print()
-        print_block("Unstaged Diff Stat", git_lines(root, ("diff", "--stat"), args.limit, args.max_bytes))
+        print_block("Unstaged Diff Stat", git_lines(root, ("diff", "--no-ext-diff", "--no-textconv", "--stat"), args.limit, args.max_bytes))
         print()
-        print_block("Unstaged Changed Files", git_lines(root, ("diff", "--name-status"), args.limit, args.max_bytes))
+        print_block("Unstaged Changed Files", git_lines(root, ("diff", "--no-ext-diff", "--no-textconv", "--name-status"), args.limit, args.max_bytes))
         print()
-        print_block("Staged Diff Stat", git_lines(root, ("diff", "--cached", "--stat"), args.limit, args.max_bytes))
+        print_block("Staged Diff Stat", git_lines(root, ("diff", "--cached", "--no-ext-diff", "--no-textconv", "--stat"), args.limit, args.max_bytes))
         print()
-        print_block("Staged Changed Files", git_lines(root, ("diff", "--cached", "--name-status"), args.limit, args.max_bytes))
+        print_block("Staged Changed Files", git_lines(root, ("diff", "--cached", "--no-ext-diff", "--no-textconv", "--name-status"), args.limit, args.max_bytes))
         print()
         print_block("Recent Modified/Untracked Files", git_recent_files(root, args.recent_limit))
     else:

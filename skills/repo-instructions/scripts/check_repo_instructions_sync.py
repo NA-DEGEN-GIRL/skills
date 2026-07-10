@@ -64,12 +64,21 @@ def main() -> int:
         "changelog",
         "plan/build",
         "not higher authority than actual repo state",
-        "whose command body you inspected and confirmed is check-only",
+        "Treat every repo-local script, binary, runner",
+        "flags do not guarantee read-only behavior",
+        "no symlinked existing path component",
         "a concrete safe verification method for each unverified item when one is discoverable",
         "instead of writing a file",
         "smallest correct diff",
         "deleted, preserved as-is, edited to drop migrated rules while keeping agent-specific content, or kept as a thin pointer",
         "for explicit consolidation requests, the relevant source instruction files",
+        "physical repository root",
+        "any symlink",
+        "exact proposed diff",
+        "explicit user approval",
+        "timestamped byte-for-byte backup",
+        "Shape Idea owns consequential changes",
+        "active runtime",
     ]
     reference_literals = {
         "references/instruction-precedence.md": [
@@ -77,12 +86,18 @@ def main() -> int:
             "Current user request, within those higher-priority constraints",
             "edit it to remove migrated rules while keeping agent-specific content",
             "thin pointer",
+            "active runtime's documented resolution and scoping semantics",
+            "Do not invent a universal ordering",
+            "exact unified diff",
+            "timestamped byte-for-byte backup",
         ],
         "references/review-checklist.md": [
             "Unverified commands or conventions include a safe way to confirm them when one is discoverable.",
             "Compactness did not remove grounding, safety rules, or required repo-specific constraints.",
             "Prefer the smallest correct diff for updates",
             "edited to keep agent-specific content",
+            "contained in the physical repo root",
+            "Consequential Design Brief",
         ],
     }
     for path in required_files:

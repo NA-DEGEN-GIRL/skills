@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "name": "distill-ramble",
+      "family": "idea-shaping",
+      "source": "skills/idea-shaping/distill-ramble",
+      "targets": ["codex", "claude"]
+    },
+    {
+      "name": "shape-idea",
+      "family": "idea-shaping",
+      "source": "skills/idea-shaping/shape-idea",
+      "targets": ["codex", "claude"]
+    },
+    {
+      "name": "codex-init-gate",
+      "family": "repo-bootstrap",
+      "source": "skills/repo-bootstrap/codex-init-gate",
+      "targets": ["codex"]
+    },
+    {
+      "name": "claude-init-gate",
+      "family": "repo-bootstrap",
+      "source": "skills/repo-bootstrap/claude-init-gate",
+      "targets": ["claude"]
+    },
+    {
+      "name": "codex-handoff",
+      "family": "handoff",
+      "source": "skills/handoff/codex-handoff",
+      "targets": ["codex"]
+    },
+    {
+      "name": "claude-handoff",
+      "family": "handoff",
+      "source": "skills/handoff/claude-handoff",
+      "targets": ["claude"]
+    },
+    {
+      "name": "design-repo-subagents",
+      "family": "subagents",
+      "source": "skills/subagents/design-repo-subagents",
+      "targets": ["codex"]
+    },
+    {
+      "name": "write-agents-md",
+      "family": "repo-instructions",
+      "source": "skills/repo-instructions/write-agents-md",
+      "targets": ["codex"]
+    },
+    {
+      "name": "orient-repo",
+      "family": "repo-orientation",
+      "source": "skills/repo-orientation/orient-repo",
+      "targets": ["codex", "claude"]
+    }
+  ]
+}

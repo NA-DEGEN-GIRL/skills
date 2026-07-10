@@ -1,8 +1,8 @@
 # Stack Presets
 
-Choose commands from actual repo manifests and lockfiles. Prefer existing repo-local scripts over these candidates. The table values are candidates, not automatic requirements. If the repo already uses `just`, `task`, package scripts, or another runner, avoid creating a divergent command surface; wrap or map the existing runner instead.
+Choose commands from actual repo manifests and lockfiles. Prefer existing repo-local scripts over these candidates. The table values are candidates, not automatic requirements. Put them on the selected canonical runner. If the repo already uses `just`, `task`, package scripts, or another runner, avoid creating a divergent command surface; use that runner directly or add an explicitly approved thin wrapper. The Make snippets below apply only when Make is selected.
 
-If no stack is detectable, stop and ask for the intended language/runner instead of emitting a finished placeholder gate.
+If no stack is detectable, classify `repo_state` as `empty-repo` and stop to ask for the intended language/runner instead of emitting a finished placeholder gate.
 
 | Stack | fmt check | fmt apply | lint | typecheck | test |
 |---|---|---|---|---|---|
@@ -11,6 +11,8 @@ If no stack is detectable, stop and ask for the intended language/runner instead
 | TS / JS | repo script or `prettier --check .` with ignore config | matching `prettier --write` apply command | repo script or approved ESLint config with `--max-warnings=0` | repo script or `tsc --noEmit` | repo script, `vitest`, or `jest` after reviewing lifecycle scripts |
 | Go | use the safe Go recipe below | `gofmt -w` on selected tracked Go files | approved `golangci-lint run` or `go vet ./...` as lint | `go build ./...` | `go test ./...` after execution approval |
 | Other | standard formatter in check mode | standard formatter apply command | strictest practical approved linter | strictest practical static check | standard test runner after review |
+
+Where supported, add the ecosystem's frozen/locked and offline/no-network options without changing the command's intended coverage. Examples include Cargo `--locked` / `--offline` for commands that resolve dependencies and package-manager frozen-lockfile/offline modes. Do not guess flags: confirm them for the detected tool/version. A missing local dependency that requires download is a separately approved install/network step, not a reason for `check` to update a lockfile.
 
 ## Safe Go Formatting Recipe
 
@@ -29,7 +31,7 @@ Do not use `gofmt -l $$(git ls-files '*.go')`; it splits filenames and can fail 
 
 ## Monorepo Pattern
 
-For polyglot repos, prefer per-stack subtargets and aggregate them:
+For polyglot repos, prefer per-stack subtargets and aggregate them. This example is Make-specific; express the same mapping in the selected runner otherwise:
 
 ```makefile
 fmt: fmt-python fmt-web fmt-go
@@ -54,6 +56,7 @@ These are not automatic requirements. Enforce only after the user approves the t
 
 - Do not install tools automatically; list exact installs and wait for approval.
 - Prefer pinned dev dependencies, lockfiles, or toolchain files over floating latest installs.
+- Check-only commands must preserve tracked source/config/lockfiles. Expected ignored caches or build outputs are allowed only when approved and reported with before/after evidence.
 - If no tests exist, do not fake a passing `test` target. Create an actionable failing target or ask whether to scaffold a minimal test.
 - File length, function length, complexity, and import-boundary thresholds are defaults, not sacred constants. If examples are needed, start discussion around small-review-unit limits such as roughly 300 lines per file, 50 lines per function, and moderate complexity caps, then adapt to the stack and team. If a project needs a temporary baseline, label it as temporary and keep the future strict gate visible.
 - Fresh repos should not be paralyzed by every strict rule at once. Propose an explicit ramp-up profile only when full strict mode blocks exploration, and do not present that as equivalent to the final gate.

@@ -4,15 +4,17 @@ Use this contract when creating or reviewing a repo-bootstrap gate.
 
 ## Canonical Runner
 
-Prefer `make check` as the portable interface when `make` is acceptable. If a repo already has a canonical runner such as `just`, `task`, package-manager scripts, or a Windows-first workflow, do **not** create a divergent command surface. Either make `make check` a thin wrapper around the existing runner, or propose the existing runner as the canonical equivalent and document the mapping.
+Put this contract on exactly one selected canonical runner. Prefer `make check` as a portable interface when Make fits the repo. If the repo already standardizes on `just`, `task`, package-manager scripts, or a Windows-first workflow, use that runner's equivalent targets directly. Create a `Makefile` only when Make is selected, or when the user approves a thin wrapper that delegates to the established runner; do **not** create a divergent command surface merely to match the examples below. Record the mapping, such as `make check`, `just check`, `task check`, or `pnpm check`.
 
 ## Empty Repos And Unknown Stacks
 
-If no language, manifest, package manager, or runner is detectable, do not treat fail-closed placeholder targets as a completed gate. Ask the user which stack/runner to target, or explicitly label any placeholder-only output as incomplete and awaiting stack selection. Do not create source/test skeletons just to make the gate pass.
+If no language, manifest, package manager, or runner is detectable, classify `repo_state` as `empty-repo`; this is independent from the requested `operation`. Do not treat fail-closed placeholder targets as a completed gate. Ask the user which stack/runner to target, or explicitly label any placeholder-only output as incomplete and awaiting stack selection. Do not create source/test skeletons just to make the gate pass.
 
-## Required Targets
+## Required Gate Capabilities
 
-The target names are the stable interface. Do not copy empty no-op targets; placeholder targets must fail closed until replaced with stack-specific commands.
+The semantic capabilities are the stable contract: setup (separate from checking), formatting check, formatting apply (separate and modifying), lint, type/static check, tests, and one aggregate check path. Prefer the names `setup`, `fmt`, `fmt-apply`, `lint`, `typecheck`, `test`, and `check` where the runner supports named targets/scripts. Do not copy empty no-op targets; placeholder targets must fail closed until replaced with stack-specific commands.
+
+The following is a **Make-only template**. Use it only when Make is the selected runner or approved thin wrapper. Translate the same fail-closed semantics into the established runner otherwise.
 
 ```makefile
 .DEFAULT_GOAL := check
@@ -25,7 +27,7 @@ help:
 setup: ## install or prepare local tools only after explicit approval
 	@echo "ERROR: setup is not configured" >&2; exit 1
 
-fmt: ## check formatting; must not modify files
+fmt: ## check formatting; must not modify tracked files
 	@echo "ERROR: fmt check is not configured" >&2; exit 1
 
 fmt-apply: ## apply formatting; must require explicit user intent
@@ -40,11 +42,24 @@ typecheck: ## run the strictest practical type/static check
 test: ## run the test suite
 	@echo "ERROR: test is not configured" >&2; exit 1
 
-check: fmt lint typecheck test ## full non-mutating gate
+check: fmt lint typecheck test ## full tracked-state-preserving gate
 	@echo "✓ all checks passed"
 ```
 
 `setup` may install or prepare local tools only when explicitly documented and approved. `check` must be deterministic, non-interactive, and check-only. `.NOTPARALLEL: check` avoids surprising parallel prerequisite output when users run `make -j check`.
+
+## Check-Only State Contract
+
+“Check-only” means the canonical check must not change tracked source, tests, configuration, generated files committed to git, or lockfiles. It may create only expected, approved ignored caches or build outputs required by the toolchain (for example `.pytest_cache/` or `target/`), and those outputs must be named in the plan/report. It must not run format-apply, code generation that rewrites tracked output, dependency updates, migrations, or interactive setup.
+
+Verify this with before/after evidence rather than assuming a tool's `check` label is honest:
+
+- capture tracked status/diff and relevant config/lockfile hashes before execution;
+- run only the reviewed canonical path after approval;
+- compare the same evidence afterward, and when practical run twice to expose nondeterminism;
+- report approved ignored caches/build outputs separately; a tracked change is a gate-contract failure even if tests pass.
+
+Prefer frozen/locked dependency resolution and offline/no-network modes where supported. A check must not refresh or rewrite a lockfile. If dependencies are not already available and a network fetch is unavoidable, disclose it and obtain execution/install approval rather than silently relaxing frozen/offline behavior.
 
 ## Check-Only Formatting
 
@@ -96,8 +111,8 @@ If a rule is valuable but not reliably enforceable in the stack, keep it in the 
 
 ## Existing Repositories, Baselines, And Self-Correction
 
-For mature repos, default to a no-regression or report-first plan if strict enforcement would create a large unrelated cleanup. A baseline/ramp-up profile is valid only when it has a stable capture command, a stored or documented baseline, and a clear rule such as "no new violations in touched files". In existing-repo mode, the self-correct loop may fix only the approved owned scope; if legacy violations outside that scope keep the gate red, stop and report instead of attempting broad cleanup.
+For mature repos, default to a no-regression or report-first plan if strict enforcement would create a large unrelated cleanup. A baseline/ramp-up profile is valid only when it has a stable capture command, a stored or documented baseline, and a clear rule such as "no new violations in touched files". When `repo_state` is `existing-repo`, the self-correct loop may fix only the approved owned scope; if legacy violations outside that scope keep the gate red, stop and report instead of attempting broad cleanup.
 
 ## Verification Report
 
-After approved execution, report enough structure for another LLM to continue without rereading the whole session: mode/runner, files changed and backups, commands reviewed/run, gate result, idempotency or check-only evidence, enforceable-now versus advisory rules, reproduction path, edit boundary, and deferred approvals or risks. When practical, run the canonical check twice or compare working-tree state before/after `check` to catch mutating or nondeterministic targets.
+After approved execution, report enough structure for another LLM to continue without rereading the whole session: `repo_state`, `operation`, runner/mapping, files changed and backups, commands reviewed/run, gate result, before/after and idempotency evidence, approved ignored outputs, enforceable-now versus advisory rules, reproduction path, edit boundary, and deferred approvals or risks. When practical, run the canonical check twice and compare tracked state before/after to catch mutating or nondeterministic targets.

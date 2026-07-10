@@ -2,4 +2,4 @@
 interface:
   display_name: "Codex Init Gate"
   short_description: "Codex LLM-debuggable gate bootstrap"
-  default_prompt: "Use $codex-init-gate to inspect this repo and set up a reviewed, check-only, LLM-debuggable make check quality gate with approval."
+  default_prompt: "Use $codex-init-gate to inspect this repo and set up a reviewed, check-only, LLM-debuggable quality gate on the selected canonical runner with approval."

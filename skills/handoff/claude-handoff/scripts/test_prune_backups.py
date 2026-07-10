@@ -5,7 +5,13 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
+import contextlib
+import io
+import os
 from pathlib import Path
+from unittest import mock
+
+import prune_backups as pruner
 
 SCRIPT = Path(__file__).with_name("prune_backups.py")
 
@@ -35,7 +41,7 @@ def test_prune_agent(agent: str) -> None:
         create_backups(handoff, agent)
         dry = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--agent", agent, "--keep", "20", "--dry-run"])
         check("Pruning:   5" in dry.stdout, f"dry-run prune count wrong for {agent}")
-        check("skipping non-snapshot filename" in dry.stdout, "malformed names should be skipped with warning")
+        check("invalid timestamp/name" in dry.stdout, "malformed names should be skipped with warning")
         check(len(list(handoff.glob(f"*-{agent}.md"))) == 27, "dry-run should not delete")
         run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--agent", agent, "--keep", "20"])
         check((handoff / "latest.md").exists(), "latest.md should be protected")
@@ -55,7 +61,7 @@ def test_symlink_dir_rejected() -> None:
         link.symlink_to(outside, target_is_directory=True)
         result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(link), "--agent", "codex"], check_result=False)
         check(result.returncode == 2, "symlinked .handoff directory should be rejected")
-        check("Refusing to prune symlinked" in result.stderr, "symlink rejection message missing")
+        check("Refusing unsafe requested lane" in result.stderr, "symlink rejection message missing")
 
 
 def test_symlink_file_skipped() -> None:
@@ -66,8 +72,8 @@ def test_symlink_file_skipped() -> None:
         target = root / "target.md"
         target.write_text("do not delete target\n", encoding="utf-8")
         (handoff / "2026-05-28-000000-codex.md").symlink_to(target)
-        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--agent", "codex", "--dry-run"])
-        check("skipping symlink" in result.stdout, "symlinked file warning missing")
+        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--agent", "codex", "--dry-run"], check_result=False)
+        check(result.returncode != 0 and "unsafe candidate refused" in result.stdout, "symlinked file warning/status missing")
         check(target.exists(), "symlink target should not be deleted")
 
 
@@ -113,9 +119,6 @@ def test_all_lanes() -> None:
             reserved_dirs.append(d)
         result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--all-lanes", "--agent", "codex", "--keep", "20"])
         check("== Lane:" in result.stdout, "all-lanes should print per-lane headers")
-        check("skipping non-scope directory: Bad_Name" in result.stdout, "invalid-slug dir should be skipped by --all-lanes")
-        for reserved in ("default", "latest", "scopes"):
-            check(f"skipping non-scope directory: {reserved}" in result.stdout, f"reserved scope {reserved} should be skipped by --all-lanes")
         check(len(list(handoff.glob("2026-05-28-*-codex.md"))) == 20, "default lane should be pruned to 20")
         check(len(list(bad.glob("2026-05-28-*-codex.md"))) == 25, "invalid-slug dir must be left untouched")
         for d in reserved_dirs:
@@ -135,10 +138,10 @@ def test_symlink_scopes_root_skipped() -> None:
         outside = root / "outside-scopes"
         outside.mkdir()
         (handoff / "scopes").symlink_to(outside, target_is_directory=True)
-        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--scope", "auth", "--agent", "codex"])
-        check("skipping symlinked scopes directory" in result.stdout, "symlinked scopes root should be skipped under --scope")
-        all_lanes = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--all-lanes", "--agent", "codex"])
-        check("skipping symlinked scopes directory" in all_lanes.stdout, "symlinked scopes root should be skipped under --all-lanes")
+        result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--scope", "auth", "--agent", "codex"], check_result=False)
+        check(result.returncode != 0 and "unsafe requested lane" in result.stderr, "symlinked scopes root should fail under --scope")
+        all_lanes = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--all-lanes", "--agent", "codex"], check_result=False)
+        check(all_lanes.returncode != 0 and "unsafe scopes" in all_lanes.stderr, "symlinked scopes root should signal under --all-lanes")
 
 
 def test_invalid_scope_rejected() -> None:
@@ -148,7 +151,94 @@ def test_invalid_scope_rejected() -> None:
         handoff.mkdir()
         result = run([sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--scope", "../evil", "--agent", "codex"], check_result=False)
         check(result.returncode == 2, "path-traversal scope should be rejected")
-        check("Invalid scope" in result.stderr, "invalid scope message missing")
+        check("invalid scope" in result.stderr, "invalid scope message missing")
+
+
+def test_invalid_agent_and_timestamp_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        handoff = root / ".handoff"
+        handoff.mkdir()
+        unsafe_agent = run(
+            [sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--agent", "*"],
+            check_result=False,
+        )
+        check(unsafe_agent.returncode == 2, "glob-like agent must be rejected")
+        invalid_stamp = handoff / "2026-99-99-999999-codex.md"
+        invalid_stamp.write_text("do not delete\n", encoding="utf-8")
+        result = run(
+            [sys.executable, str(SCRIPT), "--root", str(root), "--dir", str(handoff), "--agent", "codex", "--keep", "1"],
+        )
+        check("invalid timestamp/name" in result.stdout and invalid_stamp.exists(), "invalid timestamp must never be pruned")
+
+
+def test_lane_swap_never_deletes_outside() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        handoff = root / ".handoff"
+        handoff.mkdir()
+        for second in range(3):
+            name = f"2026-05-28-00000{second}-codex.md"
+            (handoff / name).write_text("inside\n", encoding="utf-8")
+        outside = root / "outside"
+        outside.mkdir()
+        outside_names = []
+        for second in range(3):
+            name = f"2026-05-28-00000{second}-codex.md"
+            (outside / name).write_text("outside\n", encoding="utf-8")
+            outside_names.append(name)
+
+        original_find = pruner.find_matches
+        swapped = False
+
+        def swap_after_enumeration(handle: object, agent: str):
+            nonlocal swapped
+            result = original_find(handle, agent)
+            if not swapped:
+                swapped = True
+                handoff.rename(root / ".handoff-moved")
+                handoff.symlink_to(outside, target_is_directory=True)
+            return result
+
+        argv = [str(SCRIPT), "--root", str(root), "--agent", "codex", "--keep", "1"]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(
+            pruner, "find_matches", side_effect=swap_after_enumeration
+        ):
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                rc = pruner.main()
+        check(rc != 0, "lane swap during prune should return nonzero")
+        check(all((outside / name).exists() for name in outside_names), "lane swap deleted outside files")
+
+
+def test_leaf_replacement_is_not_deleted() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        lane = root / ".handoff"
+        lane.mkdir()
+        old = lane / "2026-05-28-000000-codex.md"
+        keep = lane / "2026-05-28-000001-codex.md"
+        old.write_text("old\n", encoding="utf-8")
+        keep.write_text("keep\n", encoding="utf-8")
+        original_rename = pruner.os.rename
+        replaced = False
+
+        def replace_before_quarantine(src: str, dst: str, *args: object, **kwargs: object) -> None:
+            nonlocal replaced
+            if src == old.name and not replaced:
+                replaced = True
+                replacement = lane / ".replacement.tmp"
+                replacement.write_text("replacement\n", encoding="utf-8")
+                os.replace(replacement, old)
+            original_rename(src, dst, *args, **kwargs)
+
+        argv = [str(SCRIPT), "--root", str(root), "--agent", "codex", "--keep", "1"]
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(
+            pruner.os, "rename", side_effect=replace_before_quarantine
+        ), mock.patch.object(pruner, "require_dirfd_support", return_value=None):
+            rc = pruner.main()
+        check(rc != 0, "leaf replacement should make prune nonzero")
+        check(old.exists() and old.read_text() == "replacement\n", "replacement file was deleted")
 
 
 def main() -> int:
@@ -160,6 +250,9 @@ def main() -> int:
     test_all_lanes()
     test_symlink_scopes_root_skipped()
     test_invalid_scope_rejected()
+    test_invalid_agent_and_timestamp_rejected()
+    test_lane_swap_never_deletes_outside()
+    test_leaf_replacement_is_not_deleted()
     print("prune_backups.py smoke tests passed")
     return 0
 

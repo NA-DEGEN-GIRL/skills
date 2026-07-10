@@ -23,6 +23,8 @@ use write-agents-md
 이 repo의 root AGENTS.md를 실제 Makefile/README/scripts 기준으로 업데이트해줘. 기존 사용자 지침은 보존해.
 ```
 
+For an existing file, the skill first shows the exact diff and waits for explicit approval. Immediately before an approved overwrite, deletion, or consolidation, it revalidates repo containment/no-symlink boundaries and creates a verified timestamped byte-for-byte backup. It does not commit backup artifacts.
+
 ## Nested Instructions
 
 ```text
@@ -40,3 +42,9 @@ packages/api/에 별도 AGENTS.md가 필요한지 판단하고, 필요하면 roo
 ## Design Brief references
 
 If `docs/design-brief.md` or `docs/designs/*.md` exists, `write-agents-md` should reference accepted/current briefs concisely and add a changelog/update rule when relevant; it should not paste the brief's reasoning into `AGENTS.md`.
+
+If the requested instruction change would alter a brief's consequential scope, decisions, status, acceptance criteria, or changelog meaning, stop and use Shape Idea for that decision. This skill may update the pointer only after the brief decision is settled elsewhere.
+
+## Consolidation Safety
+
+For `CODEX.md`/`CLAUDE.md` consolidation, expect a disposition for every source (`preserve`, `edit`, `pointer`, or `delete`), one exact unified diff, explicit approval, and verified timestamped backups before any source is changed. Precedence follows the active runtime's documented instruction-resolution semantics; the skill does not assume that root `AGENTS.md` always wins or that an agent-specific file always wins.

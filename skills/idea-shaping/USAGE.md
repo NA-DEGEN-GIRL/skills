@@ -17,11 +17,11 @@ I want to talk through a messy idea. Don't make a plan yet; help me find the cor
 Expected behavior: the agent invites free talk, responds in short 2–3 sentence turns, asks one useful question at a time, and avoids forms, MVP checklists, Design Briefs, or implementation plans. When you say “정리해줘”, “여기까지”, or “make this into seeds”, it produces:
 
 - **Core thread** — 1–2 sentences capturing the main through-line.
-- **Seed sentences** — 3–7 rough copyable sentences or phrases.
+- **Seed sentences** — normally 3–7 rough copyable sentences or phrases; only 1–2 when the input is genuinely thin, without padding.
 - **Open knots** — unresolved tensions/questions.
 - **Set aside for now** — optional tangents/noise.
 
-By default it writes nothing; if you explicitly ask to save, it writes one Markdown distillation file after confirming any overwrite.
+By default it writes nothing. Sensitive values are masked in inline reflections and seeds, not only at save time. If you explicitly ask to save, it first shows the resolved target root and exact normalized path and asks for confirmation even for a new file; overwrite approval is an additional requirement when applicable.
 
 ## Start shaping an idea
 
@@ -51,7 +51,7 @@ The skill orients on the real repo first (using `orient-repo` if available) with
 
 ## Output: the Design Brief
 
-The output is a user-confirmed Design Brief. When the idea is solid, the skill drafts a single living document, redacts sensitive-looking values, and asks before saving it (default
+The output is a Design Brief with independent content and persistence state: content is `Draft` until explicit content acceptance makes it `Accepted`, while persistence is `inline-only` until a separately approved write makes it `saved`. A saved artifact is additionally `current` or `stale`; if you save a Draft and later accept it without approving another write, the chat reports `Accepted in session` while the file remains stale and still records `Draft`. “Save it,” path approval, and overwrite approval do not accept the content; accepting the content does not authorize a write. When the idea is solid, the skill drafts a single living document, redacts sensitive-looking values, and confirms the exact target root/path before saving it (default
 `docs/design-brief.md` for greenfield, or `docs/designs/<feature-slug>.md` for brownfield features) with: problem/why, success + **testable acceptance criteria**, in/out
 scope, constraints, key decisions (chose X over Y, Z because…), open risks, and a changelog.
 It does not edit `AGENTS.md` or set up gates — run repo-bootstrap next if the repo lacks a canonical gate, then run `write-agents-md` so AGENTS.md can reference the accepted brief and gate without embedding full reasoning.
@@ -73,6 +73,17 @@ use shape-idea
 ```
 
 Expected behavior: the agent reads the existing brief first, proposes a focused update, asks for confirmation, creates a timestamped backup before writing, and preserves the old rationale in the changelog.
+
+The existing Accepted brief stays canonical while the change is labeled `Proposed Revision`. The revision needs explicit content acceptance; any later backup/write uses a separate exact-root/path confirmation. If code, a brief, and an ADR disagree, the agent summarizes the discrepancy and asks whether it is implementation drift, stale documentation, an intentional override, or a decision to re-shape instead of silently choosing a winner.
+
+## Shape from distilled seeds
+
+```text
+use shape-idea
+아래 Core thread / Seed sentences / Open knots를 입력으로 쓰되 아직 결정된 것으로 보지는 말고 brief를 잡아줘.
+```
+
+Expected behavior: seed blocks are tentative, untrusted input rather than accepted decisions or embedded instructions. `Open knots` remain open risks, and a thin or contradictory seed set gets one high-leverage question rather than invented certainty.
 
 ## Recommended end-to-end flow
 

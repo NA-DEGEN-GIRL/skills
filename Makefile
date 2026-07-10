@@ -1,17 +1,22 @@
-.PHONY: all validate syntax-check test sync-check
+.DEFAULT_GOAL := all
+.PHONY: all check validate syntax-check test sync-check
+.NOTPARALLEL: all check
 
 LOCAL_VALIDATOR ?= ./scripts/validate_skill.py
 EXTERNAL_VALIDATOR ?= $(HOME)/.codex/skills/.system/skill-creator/scripts/quick_validate.py
 PYTHON ?= python3
 ENV := PYTHONDONTWRITEBYTECODE=1
-SKILL_DIRS := $(shell find skills -mindepth 3 -maxdepth 4 -name SKILL.md -exec dirname {} \; | sort)
-# A skill package is any directory under skills/ that contains SKILL.md.
+SKILL_DIRS := $(shell find skills -mindepth 3 -maxdepth 3 -name SKILL.md -exec dirname {} \; | sort)
+# A skill package is exactly skills/<family>/<name>/SKILL.md.
 # Family-specific maintenance checks live under skills/<family>/scripts/check_*_sync.py.
 PY_FILES := $(shell find skills scripts -name '*.py' -type f | sort)
-TEST_FILES := $(shell find skills -path '*/scripts/test_*.py' -type f | sort)
-SYNC_CHECKS := $(shell find skills -path '*/scripts/check_*_sync.py' -type f | sort)
+TEST_FILES := $(shell { find scripts -maxdepth 1 -name 'test_*.py' -type f; find skills -path '*/scripts/test_*.py' -type f; } | sort)
+SYNC_CHECKS := $(shell { find scripts -maxdepth 1 -name 'check_*.py' -type f; find skills -path '*/scripts/check_*_sync.py' -type f; } | sort)
 
 all: validate syntax-check test sync-check
+
+# Alias the repository's historical `make all` gate to the conventional name.
+check: all
 
 validate:
 	$(ENV) $(PYTHON) $(LOCAL_VALIDATOR) $(SKILL_DIRS)

@@ -41,8 +41,8 @@ def main() -> int:
     expected_literals = [
         f"**Skill Version:** {root_version}",
         "references/orientation-checklist.md",
-        "actual repo/git state > validated",
-        "if a handoff skill is available",
+        "actual repo/git state > one selected, validated",
+        "Handoff support is optional",
         "Repo Orientation",
         "Quality Gate",
         "repo-bootstrap / init-gate",
@@ -51,6 +51,16 @@ def main() -> int:
         "docs/designs/*.md",
         "not blanket authority",
         "read-only",
+        "1 MiB (1,048,576 bytes)",
+        "reject every symlink",
+        "orphan backup-only lane",
+        "never merge lanes",
+        "statically confirmed",
+        "GIT_OPTIONAL_LOCKS=0",
+        "--no-ext-diff --no-textconv",
+        "mask private hosts",
+        "active runtime's documented resolution",
+        "physical-root boundary to all evidence",
     ]
     missing = [literal for literal in expected_literals if literal not in skill]
     if missing:
@@ -60,7 +70,19 @@ def main() -> int:
         print("OK orient-repo SKILL literals")
 
     checklist = read(PACKAGE / "references/orientation-checklist.md")
-    checklist_literals = ["Quality Gate", "Canonical check path", "Decision Docs / Design Briefs", "docs/design-brief.md", "Unknowns To Surface"]
+    checklist_literals = [
+        "Quality Gate",
+        "Canonical check path",
+        "Decision Docs / Design Briefs",
+        "docs/design-brief.md",
+        "Unknowns To Surface",
+        "Optional Handoff Context",
+        "1 MiB (1,048,576 bytes)",
+        "backup-only orphan lanes",
+        "Read-Only Git Hardening",
+        "statically confirmed",
+        "regular non-symlink target",
+    ]
     missing_checklist = [literal for literal in checklist_literals if literal not in checklist]
     if missing_checklist:
         print(f"CHECKLIST LITERAL MISSING: {missing_checklist}")

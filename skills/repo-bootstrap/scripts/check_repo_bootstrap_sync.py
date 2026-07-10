@@ -23,36 +23,62 @@ CRITICAL_REF_LITERALS = {
         ".DEFAULT_GOAL := check",
         "git ls-files -z '*.go' | xargs -0 gofmt -l --",
         "Empty Repos And Unknown Stacks",
+        "exactly one selected canonical runner",
+        "Make-only template",
+        "Check-Only State Contract",
+        "tracked source, tests, configuration",
+        "frozen/locked dependency resolution",
         "Verification Report",
     ],
     "references/safety-workflow.md": [
         "Two Approval Gates",
         "No-write does not mean no-execute",
         "$(shell ...)",
+        "before any related file write",
+        "`repo_state` is `empty-repo`",
+        "Check-Only Evidence",
+        "offline/no-network flags",
         "pull_request_target",
         "Verification Reporting",
     ],
     "references/stack-presets.md": [
         "If no stack is detectable",
         "Do not use `gofmt -l $$(git ls-files '*.go')`",
+        "Make snippets below apply only when Make is selected",
+        "frozen/locked and offline/no-network options",
         "Monorepo Pattern",
         "roughly 300 lines per file",
     ],
     "references/llm-debuggable-code.md": [
         "The gate can strongly support question 3",
-        "If no stack/runner is detectable",
+        "`repo_state` is `empty-repo`",
         "Potentially enforce only when",
-        "Do not create directories, source files, test skeletons",
+        "tracked source/config/lockfiles must not change",
+        "Advisory findings live in the bootstrap report by default",
+        "do not create directories, source files, test skeletons",
     ],
 }
+READ_FAILURES: set[Path] = set()
 
 
 def read(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        if path not in READ_FAILURES:
+            print(f"FAIL cannot read {path}: {exc.__class__.__name__}: {exc}")
+            READ_FAILURES.add(path)
+        return ""
 
 
 def digest_bytes(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        if path not in READ_FAILURES:
+            print(f"FAIL cannot read bytes {path}: {exc.__class__.__name__}: {exc}")
+            READ_FAILURES.add(path)
+        return ""
 
 
 def normalize_skill(text: str) -> str:
@@ -103,6 +129,10 @@ def main() -> int:
     version = read(ROOT / "VERSION").strip()
     failed |= require(bool(re.fullmatch(r"\d+\.\d+\.\d+", version)), f"root VERSION {version}")
 
+    family_files = [FAMILY / "README.md", FAMILY / "USAGE.md", FAMILY / "EVALS.md"]
+    for path in family_files:
+        failed |= require(path.is_file(), f"exists {path.relative_to(ROOT)}")
+
     skill_hashes: dict[str, str] = {}
     for skill_name, (package, agent) in PACKAGES.items():
         required = [package / "SKILL.md", package / "VERSION", package / "agents/openai.yaml"]
@@ -122,6 +152,15 @@ def main() -> int:
                 f"**Skill Version:** {version}",
                 agent,
                 "empty-repo",
+                "Classify two independent axes",
+                "`repo_state`",
+                "`operation`",
+                "Create or update a `Makefile` only when Make was selected",
+                "before any related write",
+                "frozen/locked dependency resolution",
+                "approved ignored caches or build outputs",
+                "tracked source, config, and lockfiles",
+                "separate, user-approved persistence handoff",
                 "do not blanket-load all files",
                 "idempotency evidence",
                 "write-agents-md",
@@ -129,9 +168,18 @@ def main() -> int:
             ],
         )
         failed |= require(not missing, f"{skill_name} SKILL core literals" + (f" missing {missing}" if missing else ""))
+        forbidden = [
+            "Classify the mode",
+            "Create or update conventional config plus a fail-closed `Makefile`",
+        ]
+        present = [literal for literal in forbidden if literal in skill]
+        failed |= require(not present, f"{skill_name} resolved old mode/Makefile contract" + (f" unexpected {present}" if present else ""))
         prompt = parse_openai_prompt(package / "agents/openai.yaml")
         failed |= require(
-            f"${skill_name}" in prompt and "LLM-debuggable" in prompt and "approval" in prompt,
+            f"${skill_name}" in prompt
+            and "LLM-debuggable" in prompt
+            and "selected canonical runner" in prompt
+            and "approval" in prompt,
             f"{skill_name} openai default_prompt fresh",
         )
         skill_hashes[skill_name] = hashlib.sha256(normalize_skill(skill).encode()).hexdigest()
@@ -147,6 +195,33 @@ def main() -> int:
             missing = missing_literals(read(left), CRITICAL_REF_LITERALS[rel])
             failed |= require(not missing, f"critical literals {rel}" + (f" missing {missing}" if missing else ""))
 
+    family_literals = {
+        "README.md": [
+            "one selected canonical check path",
+            "`empty-repo`, `fresh-repo`, `existing-repo`",
+            "A `Makefile` is created only when Make is selected",
+            "Approved ignored caches/build outputs",
+            "handoff to `write-agents-md`",
+            "EVALS.md",
+        ],
+        "USAGE.md": [
+            "`repo_state: empty-repo`",
+            "`operation: verify-only`",
+            "Keep an existing non-Make runner",
+            "frozen/locked and offline/no-network",
+        ],
+        "EVALS.md": [
+            "Empty directory + scaffold request",
+            "Existing `just check`",
+            "Check rewrites lockfile",
+            "Claude hook/settings proposal",
+        ],
+    }
+    for rel, literals in family_literals.items():
+        missing = missing_literals(read(FAMILY / rel), literals)
+        failed |= require(not missing, f"family contract {rel}" + (f" missing {missing}" if missing else ""))
+
+    failed |= bool(READ_FAILURES)
     return 1 if failed else 0
 
 

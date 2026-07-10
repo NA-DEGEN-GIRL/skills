@@ -49,6 +49,23 @@ def main() -> int:
         print(f"  claude-only: {sorted(str(p) for p in claude_scripts - codex_scripts)}")
         failed = True
 
+    required_scripts = {
+        Path("snapshot_common.py"),
+        Path("validate_snapshot.py"),
+        Path("list_lanes.py"),
+        Path("select_snapshot.py"),
+        Path("save_snapshot.py"),
+        Path("prune_backups.py"),
+        Path("apply_marker_block.py"),
+        Path("handoff_snapshot.py"),
+        Path("test_save_snapshot.py"),
+        Path("test_select_snapshot.py"),
+    }
+    missing_scripts = required_scripts - (codex_scripts & claude_scripts)
+    if missing_scripts:
+        print(f"REQUIRED SCRIPT MISSING: {sorted(str(path) for path in missing_scripts)}")
+        failed = True
+
     for rel in sorted(codex_scripts & claude_scripts):
         left = CODEX / "scripts" / rel
         right = CLAUDE / "scripts" / rel
@@ -73,6 +90,10 @@ def main() -> int:
             f"- Skill Variant: {agent}-handoff",
             f"- Agent: {agent}",
             "validate_snapshot.py",
+            "list_lanes.py",
+            "select_snapshot.py",
+            "save_snapshot.py",
+            "prune_backups.py",
             "apply_marker_block.py",
         ]
         missing = [item for item in expected if item not in skill]
@@ -81,6 +102,18 @@ def main() -> int:
             failed = True
         else:
             print(f"OK {package.name} SKILL literals")
+
+        forbidden = ["There is no lock", "Read existing `.handoff/latest.md` if present"]
+        present = [item for item in forbidden if item in skill]
+        if present:
+            print(f"STALE/UNSAFE SKILL LITERAL in {package.name}: {present}")
+            failed = True
+
+    family_docs = (FAMILY_ROOT / "README.md").read_text(encoding="utf-8") + (FAMILY_ROOT / "USAGE.md").read_text(encoding="utf-8")
+    doc_missing = [name for name in ("save_snapshot.py", "select_snapshot.py", "backup-only", "orphan") if name not in family_docs]
+    if doc_missing:
+        print(f"FAMILY DOC LITERAL MISSING: {doc_missing}")
+        failed = True
 
     return 1 if failed else 0
 
